@@ -1,0 +1,6 @@
+{
+  "id": "drop_d",
+  "name": "Drop D",
+  "instrument": "guitar",
+  "notes": ["D2", "A2", "D3", "G3", "B3", "E4"]
+}

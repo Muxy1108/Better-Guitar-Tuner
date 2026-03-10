@@ -1,0 +1,6 @@
+{
+  "id": "standard_guitar",
+  "name": "Standard Guitar",
+  "instrument": "guitar",
+  "notes": ["E2", "A2", "D3", "G3", "B3", "E4"]
+}
