@@ -9,6 +9,7 @@ The repository is organized around a clear separation of concerns:
 - Native iOS code owns low-latency microphone capture and bridging audio buffers into Flutter-facing APIs.
 - Tuning presets are data-driven and live outside compiled DSP logic.
 - Offline tooling exercises DSP code without requiring a mobile runtime.
+- Desktop CLI tooling can exercise the same DSP core against live microphone input during local development.
 
 ## Repository Structure
 
@@ -22,7 +23,7 @@ Current state: starter Flutter files only. No production UI logic is implemented
 
 Responsibility: shared C++ interfaces and implementations for pitch detection, confidence reporting, and future DSP utilities.
 
-Current state: stub detector interface and a no-op implementation that returns "no pitch detected."
+Current state: basic monophonic pitch detection is implemented and exposed through a reusable C++ API.
 
 ### `modules/tuning_config`
 
@@ -42,6 +43,12 @@ Responsibility: offline command-line execution path for DSP debugging against WA
 
 Current state: C++ executable scaffold that validates inputs and invokes the stub DSP entrypoint.
 
+### `tools/mic_debug_runner`
+
+Responsibility: realtime command-line microphone capture for local DSP debugging on desktop machines.
+
+Current state: C++ executable that shells out to `ffmpeg` for microphone capture, converts audio to mono float PCM, feeds `dsp_core::detect_pitch`, and prints rate-limited structured pitch results.
+
 ## Intended Data Flow
 
 1. The Flutter app selects a tuning preset from `modules/tuning_config`.
@@ -50,10 +57,11 @@ Current state: C++ executable scaffold that validates inputs and invokes the stu
 4. The DSP core returns pitch-analysis results to the caller.
 5. Flutter renders the current note, target string, and tuning guidance.
 6. The WAV debug runner reuses the same DSP core for offline verification.
+7. The mic debug runner reuses the same DSP core for live desktop verification.
 
 ## Non-Goals Of This Bootstrap
 
-- No microphone capture pipeline
-- No real pitch detection algorithm
+- No mobile microphone capture pipeline yet
 - No Flutter platform channel implementation
 - No preset loading integration yet
+- No desktop GUI; the current desktop validation path is CLI-only

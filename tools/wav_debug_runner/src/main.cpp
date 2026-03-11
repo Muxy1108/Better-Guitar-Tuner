@@ -16,21 +16,18 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  dsp_core::StubPitchDetector detector;
   std::vector<float> empty_samples;
-  const dsp_core::AudioBufferView buffer{
-      empty_samples.data(),
-      empty_samples.size(),
-      48'000,
-  };
-  const dsp_core::PitchDetectionResult result = detector.Process(buffer);
+  const dsp_core::PitchResult result =
+      dsp_core::detect_pitch(empty_samples.data(),
+                             static_cast<int>(empty_samples.size()),
+                             48'000);
 
-  if (!result.detected) {
+  if (!result.has_pitch) {
     std::cout << "pitch detection not implemented yet for: " << wav_path << "\n";
     return 0;
   }
 
-  std::cout << "frequency_hz=" << result.frequency_hz
+  std::cout << "frequency_hz=" << result.detected_frequency_hz
             << " confidence=" << result.confidence << "\n";
   return 0;
 }
