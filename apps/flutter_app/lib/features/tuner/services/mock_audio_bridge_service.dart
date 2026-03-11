@@ -18,7 +18,20 @@ class MockAudioBridgeService implements AudioBridgeService {
   double _phase = 0;
 
   @override
+  AudioBridgeKind get bridgeKind => AudioBridgeKind.mock;
+
+  @override
   Stream<TuningResultModel> get tuningResults => _controller.stream;
+
+  @override
+  Future<AudioPermissionState> getMicrophonePermissionStatus() async {
+    return AudioPermissionState.granted;
+  }
+
+  @override
+  Future<AudioPermissionState> requestMicrophonePermission() async {
+    return AudioPermissionState.granted;
+  }
 
   @override
   Future<void> startListening({
@@ -81,6 +94,7 @@ class MockAudioBridgeService implements AudioBridgeService {
         status: TuningStatus.noPitch,
         pitchFrame: const PitchFrame.empty(),
         centsOffset: 0,
+        signalState: TuningSignalState.noPitch,
         targetStringIndex: targetIndex,
         targetNote: targetNote,
         targetFrequencyHz: targetFrequency,
@@ -105,6 +119,7 @@ class MockAudioBridgeService implements AudioBridgeService {
         confidence: 0.92,
       ),
       centsOffset: centsOffset,
+      signalState: TuningSignalState.pitched,
       targetStringIndex: targetIndex,
       targetNote: targetNote,
       targetFrequencyHz: targetFrequency,

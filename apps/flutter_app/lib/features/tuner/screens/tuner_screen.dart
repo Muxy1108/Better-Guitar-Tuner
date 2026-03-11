@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/tuning_mode.dart';
 import '../models/tuning_result.dart';
+import '../services/audio_bridge_service.dart';
 import '../view_models/tuner_view_model.dart';
 import '../widgets/cents_meter.dart';
 import '../widgets/status_badge.dart';
@@ -42,6 +43,24 @@ class TunerScreen extends StatelessWidget {
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.error,
                             ),
+                          ),
+                        ),
+                      if (viewModel.permissionState ==
+                          AudioPermissionState.denied)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _StateCard(
+                            title: l10n.microphonePermissionDeniedTitle,
+                            message: l10n.microphonePermissionDeniedMessage,
+                          ),
+                        ),
+                      if (viewModel.listeningErrorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _StateCard(
+                            title: l10n.listeningFailureTitle,
+                            message: viewModel.listeningErrorMessage!,
+                            isError: true,
                           ),
                         ),
                       _SectionCard(
@@ -144,9 +163,7 @@ class TunerScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    viewModel.isListening
-                                        ? l10n.mockBridgeRunning
-                                        : l10n.listeningStopped,
+                                    _listeningSummary(l10n, viewModel),
                                   ),
                                 ],
                               ),
@@ -164,6 +181,15 @@ class TunerScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _ResultSummaryCard(result: result),
+                      if (viewModel.isListening &&
+                          result.signalState != TuningSignalState.pitched)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: _StateCard(
+                            title: _signalTitle(l10n, result.signalState),
+                            message: _signalMessage(l10n, result.signalState),
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       _SectionCard(
                         child: Column(
@@ -175,10 +201,10 @@ class TunerScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             CentsMeter(
-                              centsOffset: result.pitchFrame.hasPitch
+                              centsOffset: result.hasUsablePitch
                                   ? result.centsOffset
                                   : 0,
-                              hasPitch: result.pitchFrame.hasPitch,
+                              hasPitch: result.hasUsablePitch,
                             ),
                           ],
                         ),
@@ -202,10 +228,10 @@ class _ResultSummaryCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final targetNote =
         result.hasTarget ? (result.targetNote ?? l10n.unavailableValue) : '--';
-    final frequencyValue = result.pitchFrame.hasPitch
+    final frequencyValue = result.hasUsablePitch
         ? '${result.pitchFrame.frequencyHz.toStringAsFixed(2)} Hz'
-        : l10n.noPitchLabel;
-    final centsValue = result.pitchFrame.hasPitch
+        : _signalTitle(l10n, result.signalState);
+    final centsValue = result.hasUsablePitch
         ? '${result.centsOffset >= 0 ? '+' : ''}${result.centsOffset.toStringAsFixed(1)}'
         : '--';
 
@@ -221,7 +247,10 @@ class _ResultSummaryCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              StatusBadge(status: result.status),
+              StatusBadge(
+                status: result.status,
+                signalState: result.signalState,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -266,6 +295,46 @@ class _ResultSummaryCard extends StatelessWidget {
   }
 }
 
+String _listeningSummary(AppLocalizations l10n, TunerViewModel viewModel) {
+  if (viewModel.permissionState == AudioPermissionState.denied) {
+    return l10n.microphonePermissionDeniedMessage;
+  }
+
+  if (viewModel.listeningErrorMessage != null) {
+    return l10n.listeningFailureMessage;
+  }
+
+  if (!viewModel.isListening) {
+    return l10n.listeningStopped;
+  }
+
+  return viewModel.bridgeKind == AudioBridgeKind.native
+      ? l10n.nativeBridgeRunning
+      : l10n.mockBridgeRunning;
+}
+
+String _signalTitle(AppLocalizations l10n, TuningSignalState signalState) {
+  switch (signalState) {
+    case TuningSignalState.weakSignal:
+      return l10n.weakSignalLabel;
+    case TuningSignalState.pitched:
+      return l10n.tunerReadingLabel;
+    case TuningSignalState.noPitch:
+      return l10n.noPitchLabel;
+  }
+}
+
+String _signalMessage(AppLocalizations l10n, TuningSignalState signalState) {
+  switch (signalState) {
+    case TuningSignalState.weakSignal:
+      return l10n.weakSignalMessage;
+    case TuningSignalState.pitched:
+      return l10n.nativeBridgeRunning;
+    case TuningSignalState.noPitch:
+      return l10n.noPitchMessage;
+  }
+}
+
 class _MetricTile extends StatelessWidget {
   const _MetricTile({
     required this.label,
@@ -294,6 +363,40 @@ class _MetricTile extends StatelessWidget {
             value,
             style: Theme.of(context).textTheme.titleLarge,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StateCard extends StatelessWidget {
+  const _StateCard({
+    required this.title,
+    required this.message,
+    this.isError = false,
+  });
+
+  final String title;
+  final String message;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = isError ? scheme.error : scheme.primary;
+
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: color,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(message),
         ],
       ),
     );

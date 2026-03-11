@@ -19,8 +19,9 @@ Responsibility: application shell, screens, state management, and presentation o
 
 Current state: Stage 4 MVP UI architecture is implemented with an app shell,
 feature-based tuner module, `ChangeNotifier` view model, localization
-scaffolding, asset-backed preset loading, and a mock audio bridge service that
-simulates realtime tuning events until the native iOS bridge is ready.
+scaffolding, asset-backed preset loading, a native iOS audio bridge for live
+capture, and a mock audio bridge service that remains available for testing and
+non-iOS development.
 
 ### `modules/dsp_core`
 
@@ -48,6 +49,9 @@ tunings.
 Responsibility: low-latency microphone capture, audio-session configuration, and bridging captured buffers/results to Flutter.
 
 Current state: Swift placeholder types describing the intended bridge boundary. No live audio capture is implemented.
+Current state: `AVAudioEngine` capture is implemented in Swift, a thin ObjC++
+bridge feeds PCM windows into `dsp_core` and `tuning_engine`, and Flutter is
+connected through a method channel plus event stream.
 
 ### `tools/wav_debug_runner`
 
@@ -67,21 +71,30 @@ tuning guidance in auto or manual mode.
 
 1. The Flutter app selects a tuning preset from `modules/tuning_config`.
 2. Flutter state is coordinated by the tuner feature view model.
-3. On iOS, the native audio layer will capture microphone frames with low latency.
-4. Captured samples are passed into the shared C++ DSP core.
-5. The DSP core returns pitch-analysis results to the caller.
-6. The tuning engine maps pitch results to the active tuning preset and
+3. Flutter requests microphone permission and sends start/stop/config updates
+   through the `AudioBridgeService`.
+4. On iOS, the native audio layer captures microphone frames with low latency
+   via `AVAudioEngine`.
+5. Captured samples are passed into the shared C++ DSP core.
+6. The DSP core returns pitch-analysis results to the caller.
+7. The tuning engine maps pitch results to the active tuning preset and
    produces target-string guidance.
-7. The platform bridge emits structured tuning results through the Flutter-side
-   `AudioBridgeService` abstraction.
-8. Flutter renders the current note, target string, and tuning guidance.
-9. The WAV debug runner reuses the same DSP core for offline verification.
-10. The mic debug runner reuses the same DSP core for live desktop verification.
+8. The platform bridge emits structured tuning-result payloads on an event
+   stream through the Flutter-side `AudioBridgeService` abstraction.
+9. The Flutter view model applies lightweight smoothing and state hysteresis,
+   then renders the current note, target string, and tuning guidance.
+10. The WAV debug runner reuses the same DSP core for offline verification.
+11. The mic debug runner reuses the same DSP core for live desktop verification.
 
-## Current Stage 4 Notes
+## Current Stage 5 Notes
 
 - The Flutter UI is intentionally simple and functional, with cards, control
   rows, and a cents meter widget rather than final visual polish.
-- The audio bridge is still mocked inside Flutter; no production iOS capture or
-  Flutter platform channel code is shipped in this stage.
+- The Flutter app defaults to the native iOS bridge on iPhone/iPad builds and
+  retains the mock bridge as a fallback for testing and non-iOS development.
+- The native bridge uses method calls for permission/start/stop/configuration
+  and an event stream for continuous tuning frames.
+- Flutter owns presentation-state smoothing, permission/error display, and
+  no-pitch or weak-signal UX handling; tuning decisions remain in
+  `tuning_engine`.
 - No desktop GUI exists; the current desktop validation path remains CLI-only.

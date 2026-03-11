@@ -8,6 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		2A1000015A5A5A5A5A5A5A01 /* AudioCaptureBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1000115A5A5A5A5A5A5A01 /* AudioCaptureBridge.swift */; };
+		2A1000025A5A5A5A5A5A5A01 /* FlutterTunerBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1000125A5A5A5A5A5A5A01 /* FlutterTunerBridge.swift */; };
+		2A1000035A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2A1000145A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.mm */; };
+		2A1000045A5A5A5A5A5A5A01 /* pitch_detector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A1000215A5A5A5A5A5A5A01 /* pitch_detector.cpp */; };
+		2A1000055A5A5A5A5A5A5A01 /* pitch_utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A1000225A5A5A5A5A5A5A01 /* pitch_utils.cpp */; };
+		2A1000065A5A5A5A5A5A5A01 /* tuner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A1000235A5A5A5A5A5A5A01 /* tuner.cpp */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -43,6 +49,13 @@
 /* Begin PBXFileReference section */
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		2A1000115A5A5A5A5A5A5A01 /* AudioCaptureBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioCaptureBridge.swift; path = ../../../platform/ios/Sources/AudioCaptureBridge.swift; sourceTree = "<group>"; };
+		2A1000125A5A5A5A5A5A5A01 /* FlutterTunerBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FlutterTunerBridge.swift; path = ../../../platform/ios/Sources/FlutterTunerBridge.swift; sourceTree = "<group>"; };
+		2A1000135A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = NativeTuningProcessorBridge.h; path = ../../../platform/ios/Sources/NativeTuningProcessorBridge.h; sourceTree = "<group>"; };
+		2A1000145A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = NativeTuningProcessorBridge.mm; path = ../../../platform/ios/Sources/NativeTuningProcessorBridge.mm; sourceTree = "<group>"; };
+		2A1000215A5A5A5A5A5A5A01 /* pitch_detector.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = pitch_detector.cpp; path = ../../../modules/dsp_core/src/pitch_detector.cpp; sourceTree = "<group>"; };
+		2A1000225A5A5A5A5A5A5A01 /* pitch_utils.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = pitch_utils.cpp; path = ../../../modules/dsp_core/src/pitch_utils.cpp; sourceTree = "<group>"; };
+		2A1000235A5A5A5A5A5A5A01 /* tuner.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = tuner.cpp; path = ../../../modules/tuning_engine/src/tuner.cpp; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
@@ -70,6 +83,27 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		2A1000315A5A5A5A5A5A5A01 /* NativeModules */ = {
+			isa = PBXGroup;
+			children = (
+				2A1000215A5A5A5A5A5A5A01 /* pitch_detector.cpp */,
+				2A1000225A5A5A5A5A5A5A01 /* pitch_utils.cpp */,
+				2A1000235A5A5A5A5A5A5A01 /* tuner.cpp */,
+			);
+			name = NativeModules;
+			sourceTree = "<group>";
+		};
+		2A1000325A5A5A5A5A5A5A01 /* PlatformIOS */ = {
+			isa = PBXGroup;
+			children = (
+				2A1000115A5A5A5A5A5A5A01 /* AudioCaptureBridge.swift */,
+				2A1000125A5A5A5A5A5A5A01 /* FlutterTunerBridge.swift */,
+				2A1000135A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.h */,
+				2A1000145A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.mm */,
+			);
+			name = PlatformIOS;
+			sourceTree = "<group>";
+		};
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -94,6 +128,8 @@
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
+				2A1000325A5A5A5A5A5A5A01 /* PlatformIOS */,
+				2A1000315A5A5A5A5A5A5A01 /* NativeModules */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 			);
@@ -271,6 +307,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A1000015A5A5A5A5A5A5A01 /* AudioCaptureBridge.swift in Sources */,
+				2A1000025A5A5A5A5A5A5A01 /* FlutterTunerBridge.swift in Sources */,
+				2A1000035A5A5A5A5A5A5A01 /* NativeTuningProcessorBridge.mm in Sources */,
+				2A1000045A5A5A5A5A5A5A01 /* pitch_detector.cpp in Sources */,
+				2A1000055A5A5A5A5A5A5A01 /* pitch_utils.cpp in Sources */,
+				2A1000065A5A5A5A5A5A5A01 /* tuner.cpp in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
@@ -313,7 +355,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -367,6 +409,12 @@
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../..",
+					"$(SRCROOT)/../../../modules/dsp_core/include",
+					"$(SRCROOT)/../../../modules/tuning_engine/include",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -433,7 +481,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -490,7 +538,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -546,6 +594,12 @@
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../..",
+					"$(SRCROOT)/../../../modules/dsp_core/include",
+					"$(SRCROOT)/../../../modules/tuning_engine/include",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -568,6 +622,12 @@
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../..",
+					"$(SRCROOT)/../../../modules/dsp_core/include",
+					"$(SRCROOT)/../../../modules/tuning_engine/include",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

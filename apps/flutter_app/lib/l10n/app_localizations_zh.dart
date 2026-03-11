@@ -36,7 +36,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mockBridgeRunning => '当前使用模拟音频桥接服务输出开发数据。';
 
   @override
+  String get nativeBridgeRunning => '当前使用原生音频桥接服务输出实时调音数据。';
+
+  @override
   String get listeningStopped => '输入流已停止。';
+
+  @override
+  String get microphonePermissionDeniedTitle => '需要麦克风权限';
+
+  @override
+  String get microphonePermissionDeniedMessage =>
+      '麦克风访问已被拒绝。请在 iOS 设置中启用权限后再进行实时调音。';
+
+  @override
+  String get listeningFailureTitle => '监听启动失败';
+
+  @override
+  String get listeningFailureMessage => '音频桥接服务无法开始或继续监听。';
 
   @override
   String get tunerReadingLabel => '当前读数';
@@ -58,6 +74,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noPitchLabel => '无音高';
+
+  @override
+  String get noPitchMessage => '暂未检测到清晰音高。请在靠近麦克风的位置重新拨动琴弦。';
+
+  @override
+  String get weakSignalLabel => '信号较弱';
+
+  @override
+  String get weakSignalMessage => '当前音高输入不稳定。请延长拨弦时间或减少环境噪声。';
 
   @override
   String get tooLowLabel => '偏低';

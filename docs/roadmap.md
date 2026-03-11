@@ -48,3 +48,8 @@ work.
 - Deliver live structured tuning events from native code into the Flutter view model
 - Add calibration, sensitivity, permission handling, and persistent user settings
 - Validate end-to-end realtime behavior against the desktop debug tooling
+
+Status: Stage 5 realtime iOS bridge is implemented with native microphone
+capture, method/event channel integration, Flutter-side permission and bridge
+error handling, weak-signal/no-pitch UX, and mock bridge fallback. Calibration,
+sensitivity controls, and persisted settings remain for the next phase.

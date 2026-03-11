@@ -90,27 +90,63 @@ Flutter-side bridge:
 
 - `AudioBridgeService`: abstraction for start/stop/configuration updates and
   streaming structured tuning results into Flutter
+- `NativeAudioBridgeService`: production Flutter implementation backed by
+  platform channels on iOS
+- `MockAudioBridgeService`: deterministic development fallback that preserves
+  the Stage 4 UI contract
 
 Current behavior:
 
 - `AssetTuningPresetRepository` loads presets from the shared JSON bundle
 - `MockAudioBridgeService` emits simulated realtime tuning results for Stage 4
-  UI development
-- No production platform channel or iOS audio bridge is connected yet
+  style UI development
+- `NativeAudioBridgeService` exposes microphone permission, start/stop, and
+  configuration updates through a method channel
+- Native tuning frames are delivered through an event stream as structured
+  maps that mirror the shared tuning result shape plus signal metadata
 
 ## iOS Bridge Contract
 
 Location: `platform/ios/Sources/AudioCaptureBridge.swift`
 
-Intended responsibilities:
+Responsibilities:
 
 - Start and stop microphone capture
-- Deliver mono PCM buffers to shared processing code
+- Deliver mono float PCM buffers to shared processing code
 - Provide a Flutter-facing integration point
+- Keep platform-specific session and channel code out of the Flutter UI layer
+
+Method channel operations:
+
+- `getMicrophonePermissionStatus`
+- `requestMicrophonePermission`
+- `startListening`
+- `stopListening`
+- `updateConfiguration`
+
+Event stream payload fields:
+
+- `tuning_id`
+- `mode`
+- `target_string_index`
+- `target_note`
+- `target_frequency_hz`
+- `detected_frequency_hz`
+- `cents_offset`
+- `status`
+- `has_detected_pitch`
+- `has_target`
+- `pitch_confidence`
+- `pitch_note`
+- `pitch_midi`
+- `signal_state`
+- optional `error_message`
 
 Current behavior:
 
-- Placeholder API only. No microphone session or Flutter channel code is implemented.
+- `AudioCaptureBridge` uses `AVAudioEngine` with a microphone tap and float PCM conversion
+- `NativeTuningProcessorBridge` keeps DSP and tuning evaluation in native code
+- `FlutterTunerBridge` owns the Flutter method/event channel boundary
 
 ## WAV Debug Runner Contract
 
@@ -147,3 +183,4 @@ Current behavior:
 - Loads tuning presets from the bundled JSON file by default, or from an explicit preset path
 - Resolves the selected tuning preset by id before capture starts
 - Prints structured tuning guidance only for stable, meaningful detections
+- Remains the closest desktop reference path for the Stage 5 iOS bridge flow

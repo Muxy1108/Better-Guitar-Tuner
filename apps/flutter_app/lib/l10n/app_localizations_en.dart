@@ -37,7 +37,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Mock audio bridge is streaming development data.';
 
   @override
+  String get nativeBridgeRunning =>
+      'Native audio bridge is streaming live tuning data.';
+
+  @override
   String get listeningStopped => 'Input stream is stopped.';
+
+  @override
+  String get microphonePermissionDeniedTitle =>
+      'Microphone permission required';
+
+  @override
+  String get microphonePermissionDeniedMessage =>
+      'Microphone access is denied. Enable it in iOS Settings to tune with live input.';
+
+  @override
+  String get listeningFailureTitle => 'Listening failed';
+
+  @override
+  String get listeningFailureMessage =>
+      'The audio bridge could not start or continue listening.';
 
   @override
   String get tunerReadingLabel => 'Current reading';
@@ -59,6 +78,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPitchLabel => 'No pitch';
+
+  @override
+  String get noPitchMessage =>
+      'No clear note is detected yet. Pluck a string closer to the microphone.';
+
+  @override
+  String get weakSignalLabel => 'Weak signal';
+
+  @override
+  String get weakSignalMessage =>
+      'Pitch input is unstable. Hold the note longer or reduce background noise.';
 
   @override
   String get tooLowLabel => 'Too low';

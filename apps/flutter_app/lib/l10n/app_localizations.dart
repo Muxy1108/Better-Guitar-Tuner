@@ -152,11 +152,41 @@ abstract class AppLocalizations {
   /// **'Mock audio bridge is streaming development data.'**
   String get mockBridgeRunning;
 
+  /// No description provided for @nativeBridgeRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Native audio bridge is streaming live tuning data.'**
+  String get nativeBridgeRunning;
+
   /// No description provided for @listeningStopped.
   ///
   /// In en, this message translates to:
   /// **'Input stream is stopped.'**
   String get listeningStopped;
+
+  /// No description provided for @microphonePermissionDeniedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission required'**
+  String get microphonePermissionDeniedTitle;
+
+  /// No description provided for @microphonePermissionDeniedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone access is denied. Enable it in iOS Settings to tune with live input.'**
+  String get microphonePermissionDeniedMessage;
+
+  /// No description provided for @listeningFailureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening failed'**
+  String get listeningFailureTitle;
+
+  /// No description provided for @listeningFailureMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The audio bridge could not start or continue listening.'**
+  String get listeningFailureMessage;
 
   /// No description provided for @tunerReadingLabel.
   ///
@@ -199,6 +229,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No pitch'**
   String get noPitchLabel;
+
+  /// No description provided for @noPitchMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No clear note is detected yet. Pluck a string closer to the microphone.'**
+  String get noPitchMessage;
+
+  /// No description provided for @weakSignalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weak signal'**
+  String get weakSignalLabel;
+
+  /// No description provided for @weakSignalMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pitch input is unstable. Hold the note longer or reduce background noise.'**
+  String get weakSignalMessage;
 
   /// No description provided for @tooLowLabel.
   ///
