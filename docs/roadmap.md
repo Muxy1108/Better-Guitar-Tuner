@@ -11,14 +11,20 @@ Status: complete in current bootstrap.
 ## Phase 1: Preset Loading
 
 - Define JSON schema validation expectations
-- Load tuning presets into the Flutter app
-- Expose preset metadata to platform integrations
+- Load tuning presets into shared runtime code
+- Expose preset metadata to Flutter and platform integrations
 
 ## Phase 2: DSP Core
 
 - Implement frame-based pitch detection in `modules/dsp_core`
 - Add deterministic unit coverage around note detection and confidence scoring
 - Expand offline tooling for fixture-based regression checks
+
+## Phase 2.5: Tuning Business Logic
+
+- Load canonical guitar tunings from JSON in shared C++
+- Convert pitch detector output into structured tuning guidance
+- Support auto and manual string targeting with configurable cent thresholds
 
 ## Phase 3: iOS Audio Pipeline
 

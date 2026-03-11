@@ -25,11 +25,20 @@ Responsibility: shared C++ interfaces and implementations for pitch detection, c
 
 Current state: basic monophonic pitch detection is implemented and exposed through a reusable C++ API.
 
+### `modules/tuning_engine`
+
+Responsibility: shared C++ business logic for loading tuning presets and mapping
+detected pitch into string-level tuning guidance.
+
+Current state: preset loading, auto/manual target selection, and cents-based
+status classification are implemented.
+
 ### `modules/tuning_config`
 
 Responsibility: JSON-based tuning preset definitions consumed by UI and platform layers.
 
-Current state: example presets for standard and drop tunings.
+Current state: a canonical bundled JSON preset file defines the supported guitar
+tunings.
 
 ### `platform/ios`
 
@@ -48,6 +57,8 @@ Current state: C++ executable scaffold that validates inputs and invokes the stu
 Responsibility: realtime command-line microphone capture for local DSP debugging on desktop machines.
 
 Current state: C++ executable that shells out to `ffmpeg` for microphone capture, converts audio to mono float PCM, feeds `dsp_core::detect_pitch`, and prints rate-limited structured pitch results.
+It now also loads shared tuning presets and prints rate-limited structured
+tuning guidance in auto or manual mode.
 
 ## Intended Data Flow
 
@@ -55,13 +66,14 @@ Current state: C++ executable that shells out to `ffmpeg` for microphone capture
 2. On iOS, the native audio layer captures microphone frames with low latency.
 3. Captured samples are passed into the shared C++ DSP core.
 4. The DSP core returns pitch-analysis results to the caller.
-5. Flutter renders the current note, target string, and tuning guidance.
-6. The WAV debug runner reuses the same DSP core for offline verification.
-7. The mic debug runner reuses the same DSP core for live desktop verification.
+5. The tuning engine maps pitch results to the active tuning preset and
+   produces target-string guidance.
+6. Flutter renders the current note, target string, and tuning guidance.
+7. The WAV debug runner reuses the same DSP core for offline verification.
+8. The mic debug runner reuses the same DSP core for live desktop verification.
 
 ## Non-Goals Of This Bootstrap
 
 - No mobile microphone capture pipeline yet
 - No Flutter platform channel implementation
-- No preset loading integration yet
 - No desktop GUI; the current desktop validation path is CLI-only

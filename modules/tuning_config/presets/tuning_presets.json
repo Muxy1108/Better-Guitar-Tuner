@@ -1,0 +1,52 @@
+{
+  "presets": [
+    {
+      "id": "standard",
+      "name": "Standard",
+      "instrument": "guitar",
+      "notes": ["E2", "A2", "D3", "G3", "B3", "E4"]
+    },
+    {
+      "id": "drop_d",
+      "name": "Drop D",
+      "instrument": "guitar",
+      "notes": ["D2", "A2", "D3", "G3", "B3", "E4"]
+    },
+    {
+      "id": "d_standard",
+      "name": "D Standard",
+      "instrument": "guitar",
+      "notes": ["D2", "G2", "C3", "F3", "A3", "D4"]
+    },
+    {
+      "id": "half_step_down",
+      "name": "Half Step Down",
+      "instrument": "guitar",
+      "notes": ["D#2", "G#2", "C#3", "F#3", "A#3", "D#4"]
+    },
+    {
+      "id": "open_g",
+      "name": "Open G",
+      "instrument": "guitar",
+      "notes": ["D2", "G2", "D3", "G3", "B3", "D4"]
+    },
+    {
+      "id": "open_d",
+      "name": "Open D",
+      "instrument": "guitar",
+      "notes": ["D2", "A2", "D3", "F#3", "A3", "D4"]
+    },
+    {
+      "id": "dadgad",
+      "name": "DADGAD",
+      "instrument": "guitar",
+      "notes": ["D2", "A2", "D3", "G3", "A3", "D4"]
+    },
+    {
+      "id": "double_drop_d",
+      "name": "Double Drop D",
+      "instrument": "guitar",
+      "notes": ["D2", "A2", "D3", "G3", "B3", "D4"]
+    }
+  ]
+}

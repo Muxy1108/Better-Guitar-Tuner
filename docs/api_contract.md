@@ -16,10 +16,12 @@ Primary API:
 Current behavior:
 
 - The implementation performs monophonic pitch detection and returns note metadata when a stable pitch is found.
+- `dsp_core::note_name_to_midi(...)` and `dsp_core::midi_to_frequency_hz(...)`
+  are available for shared note/frequency conversions outside the detector
 
 ## Tuning Config Contract
 
-Location: `modules/tuning_config/presets/*.json`
+Location: `modules/tuning_config/presets/tuning_presets.json`
 
 Preset fields:
 
@@ -30,7 +32,42 @@ Preset fields:
 
 Current behavior:
 
-- Presets are static JSON documents only. No runtime loader is wired yet.
+- Presets are loaded at runtime by the shared tuning engine.
+
+## Tuning Engine Contract
+
+Headers:
+
+- `modules/tuning_engine/include/tuning_engine/preset_loader.h`
+- `modules/tuning_engine/include/tuning_engine/tuner.h`
+
+Primary APIs:
+
+- `tuning_engine::load_presets_from_file(...)`
+- `tuning_engine::find_preset_by_id(...)`
+- `tuning_engine::evaluate_tuning(...)`
+
+Result payload:
+
+- `tuning_engine::TuningResult`: structured tuning guidance with tuning id,
+  mode, target string index, target note, target frequency, detected frequency,
+  cents offset, and status
+
+Modes:
+
+- `auto`: choose the nearest target string from the active tuning
+- `manual`: compare only against a caller-selected target string
+
+Status rules:
+
+- `too_low`
+- `in_tune`
+- `too_high`
+
+Threshold source:
+
+- `tuning_engine::TuningThresholds`
+- default constant: `tuning_engine::kDefaultTuningThresholds`
 
 ## iOS Bridge Contract
 
@@ -70,7 +107,7 @@ Location: `tools/mic_debug_runner/src/main.cpp`
 CLI shape:
 
 ```text
-mic_debug_runner [--backend <name>] [--device <name>] [--sample-rate <hz>] [--window-size <samples>] [--hop-size <samples>] [--stable-count <n>]
+mic_debug_runner [--backend <name>] [--device <name>] [--sample-rate <hz>] [--window-size <samples>] [--hop-size <samples>] [--stable-count <n>] [--tuning <preset_id>] [--mode <auto|manual>] [--string-index <n>] [--preset-file <path>]
 ```
 
 Current behavior:
@@ -78,4 +115,6 @@ Current behavior:
 - Spawns `ffmpeg` as an isolated microphone capture shim
 - Requests mono float PCM from the selected capture backend/device
 - Feeds sliding windows into `dsp_core::detect_pitch(...)`
-- Prints structured pitch data only for stable, meaningful detections
+- Loads tuning presets from the bundled JSON file by default, or from an explicit preset path
+- Resolves the selected tuning preset by id before capture starts
+- Prints structured tuning guidance only for stable, meaningful detections

@@ -1,4 +1,6 @@
 #include "dsp_core/pitch_detector.h"
+#include "tuning_engine/preset_loader.h"
+#include "tuning_engine/tuner.h"
 
 #include <algorithm>
 #include <array>
@@ -15,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -31,10 +34,21 @@ constexpr float kMaximumAbsCentsForStability = 80.0f;
 constexpr auto kMinimumPrintInterval = std::chrono::milliseconds(350);
 constexpr auto kRepeatPrintInterval = std::chrono::milliseconds(1'200);
 constexpr std::size_t kReadChunkSamples = 512;
+#ifdef MIC_DEBUG_RUNNER_DEFAULT_PRESET_FILE
+constexpr char kDefaultPresetFilePath[] = MIC_DEBUG_RUNNER_DEFAULT_PRESET_FILE;
+#else
+constexpr char kDefaultPresetFilePath[] =
+    "modules/tuning_config/presets/tuning_presets.json";
+#endif
 
 std::atomic<bool> g_keep_running{true};
 
 void HandleSignal(int) { g_keep_running = false; }
+
+enum class CliMode {
+  kAuto,
+  kManual,
+};
 
 struct Options {
   std::string backend = "pulse";
@@ -44,6 +58,10 @@ struct Options {
   int window_size = kDefaultWindowSize;
   int hop_size = kDefaultHopSize;
   int stable_detections_required = kDefaultStableDetectionsRequired;
+  std::string tuning_id = "standard";
+  CliMode mode = CliMode::kAuto;
+  int string_index = -1;
+  std::string preset_file = kDefaultPresetFilePath;
   bool show_help = false;
 };
 
@@ -72,11 +90,22 @@ std::string ShellEscape(std::string_view value) {
   return escaped;
 }
 
+std::string_view ToString(CliMode mode) {
+  switch (mode) {
+    case CliMode::kAuto:
+      return "auto";
+    case CliMode::kManual:
+      return "manual";
+  }
+
+  return "auto";
+}
+
 void PrintUsage(std::ostream& stream) {
   stream
       << "usage: mic_debug_runner [options]\n"
       << "\n"
-      << "Realtime microphone debug runner for dsp_core.\n"
+      << "Realtime microphone debug runner for dsp_core and tuning_engine.\n"
       << "\n"
       << "options:\n"
       << "  --backend <pulse|alsa|avfoundation|dshow|lavfi>  FFmpeg input backend.\n"
@@ -85,6 +114,10 @@ void PrintUsage(std::ostream& stream) {
       << "  --window-size <samples>                    DSP analysis window. Default: 4096\n"
       << "  --hop-size <samples>                       Samples between analyses. Default: 1024\n"
       << "  --stable-count <n>                         Matching frames before printing. Default: 3\n"
+      << "  --tuning <preset_id>                       Tuning preset id. Default: standard\n"
+      << "  --mode <auto|manual>                       Target selection mode. Default: auto\n"
+      << "  --string-index <n>                         Target string index for manual mode.\n"
+      << "  --preset-file <path>                       Preset JSON path. Default: bundled tuning_presets.json\n"
       << "  --help                                     Show this message.\n";
 }
 
@@ -104,6 +137,20 @@ bool ParseInt(std::string_view text, int* value) {
 
   *value = static_cast<int>(parsed);
   return true;
+}
+
+bool ParseMode(std::string_view text, CliMode* mode) {
+  if (text == "auto") {
+    *mode = CliMode::kAuto;
+    return true;
+  }
+
+  if (text == "manual") {
+    *mode = CliMode::kManual;
+    return true;
+  }
+
+  return false;
 }
 
 bool ParseArgs(int argc, char** argv, Options* options) {
@@ -144,6 +191,20 @@ bool ParseArgs(int argc, char** argv, Options* options) {
         std::cerr << "error: invalid stable count: " << value << "\n";
         return false;
       }
+    } else if (arg == "--tuning") {
+      options->tuning_id = std::string(value);
+    } else if (arg == "--mode") {
+      if (!ParseMode(value, &options->mode)) {
+        std::cerr << "error: invalid mode: " << value << "\n";
+        return false;
+      }
+    } else if (arg == "--string-index") {
+      if (!ParseInt(value, &options->string_index)) {
+        std::cerr << "error: invalid string index: " << value << "\n";
+        return false;
+      }
+    } else if (arg == "--preset-file") {
+      options->preset_file = std::string(value);
     } else {
       std::cerr << "error: unknown argument: " << arg << "\n";
       return false;
@@ -161,16 +222,57 @@ bool ParseArgs(int argc, char** argv, Options* options) {
     return false;
   }
 
+  if (options->tuning_id.empty()) {
+    std::cerr << "error: tuning id must not be empty\n";
+    return false;
+  }
+
+  if (options->preset_file.empty()) {
+    std::cerr << "error: preset file path must not be empty\n";
+    return false;
+  }
+
+  if (options->mode == CliMode::kManual && options->string_index < 0) {
+    std::cerr << "error: --string-index is required for manual mode\n";
+    return false;
+  }
+
+  if (options->mode == CliMode::kAuto && options->string_index >= 0) {
+    std::cerr << "error: --string-index is only valid in manual mode\n";
+    return false;
+  }
+
   return true;
 }
 
 std::string BuildFfmpegCommand(const Options& options) {
   std::ostringstream command;
-  command << "ffmpeg -hide_banner -loglevel error -nostdin "
-          << "-f " << ShellEscape(options.backend) << " "
-          << "-i " << ShellEscape(options.device) << " "
-          << "-ac " << options.channels << " "
-          << "-ar " << options.sample_rate << " "
+  command << "ffmpeg -hide_banner -loglevel error -nostdin ";
+
+  // Pulse capture can expose timestamp jitter under PipeWire/Pulse bridges.
+  // Keep the workaround local to that backend so the other indev paths stay
+  // close to their default FFmpeg behavior.
+  if (options.backend == "pulse") {
+    command << "-thread_queue_size 512 "
+            << "-fflags +genpts+nobuffer "
+            << "-use_wallclock_as_timestamps 1 "
+            << "-f " << ShellEscape(options.backend) << " "
+            << "-sample_rate " << options.sample_rate << " "
+            << "-channels " << options.channels << " "
+            << "-wallclock 1 "
+            << "-i " << ShellEscape(options.device) << " "
+            << "-map 0:a:0 "
+            << "-af aresample=async=1:first_pts=0 "
+            << "-ac " << options.channels << " "
+            << "-ar " << options.sample_rate << " ";
+  } else {
+    command << "-f " << ShellEscape(options.backend) << " "
+            << "-i " << ShellEscape(options.device) << " "
+            << "-ac " << options.channels << " "
+            << "-ar " << options.sample_rate << " ";
+  }
+
+  command << "-vn -sn -dn "
           << "-acodec pcm_f32le "
           << "-f f32le pipe:1";
   return command.str();
@@ -241,16 +343,23 @@ bool ShouldPrint(const dsp_core::PitchResult& result, StablePitchState* state,
   return true;
 }
 
-void PrintResult(const dsp_core::PitchResult& result) {
+void PrintResult(const tuning_engine::TuningResult& result) {
   std::cout << std::fixed << std::setprecision(2)
             << "{"
+            << "\"tuning_id\":\"" << result.tuning_id << "\","
+            << "\"mode\":\"" << tuning_engine::to_string(result.mode) << "\","
+            << "\"target_string_index\":" << result.target_string_index << ","
+            << "\"target_note\":\"" << result.target_note << "\","
+            << "\"target_frequency_hz\":" << result.target_frequency_hz << ","
             << "\"detected_frequency_hz\":" << result.detected_frequency_hz << ","
-            << "\"nearest_note\":\"" << result.nearest_note << "\","
-            << "\"nearest_midi\":" << result.nearest_midi << ","
             << "\"cents_offset\":" << result.cents_offset << ","
-            << "\"confidence\":" << result.confidence << ","
-            << "\"has_pitch\":" << (result.has_pitch ? "true" : "false")
-            << "}\n";
+            << "\"status\":\"" << tuning_engine::to_string(result.status) << "\","
+            << "\"has_detected_pitch\":"
+            << (result.has_detected_pitch ? "true" : "false");
+  if (!result.error_message.empty()) {
+    std::cout << ",\"error_message\":\"" << result.error_message << "\"";
+  }
+  std::cout << "}\n";
 }
 
 }  // namespace
@@ -270,6 +379,28 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  const tuning_engine::PresetLoadResult preset_load_result =
+      tuning_engine::load_presets_from_file(options.preset_file);
+  if (!preset_load_result.ok()) {
+    std::cerr << "error: " << preset_load_result.error_message << "\n";
+    return 1;
+  }
+
+  const tuning_engine::TuningPreset* preset = tuning_engine::find_preset_by_id(
+      preset_load_result.presets, options.tuning_id);
+  if (preset == nullptr) {
+    std::cerr << "error: unknown tuning preset id: " << options.tuning_id
+              << "\n";
+    return 1;
+  }
+
+  if (options.mode == CliMode::kManual &&
+      options.string_index >= static_cast<int>(preset->strings.size())) {
+    std::cerr << "error: string index " << options.string_index
+              << " is out of range for preset '" << options.tuning_id << "'\n";
+    return 1;
+  }
+
   const std::string command = BuildFfmpegCommand(options);
   std::FILE* ffmpeg_pipe = popen(command.c_str(), "r");
   if (ffmpeg_pipe == nullptr) {
@@ -281,7 +412,13 @@ int main(int argc, char** argv) {
             << " device=" << options.device
             << " sample_rate=" << options.sample_rate
             << " window_size=" << options.window_size
-            << " hop_size=" << options.hop_size << "\n";
+            << " hop_size=" << options.hop_size
+            << " tuning=" << options.tuning_id
+            << " mode=" << ToString(options.mode);
+  if (options.mode == CliMode::kManual) {
+    std::cerr << " string_index=" << options.string_index;
+  }
+  std::cerr << " preset_file=" << options.preset_file << "\n";
 
   std::deque<float> sample_buffer;
   sample_buffer.clear();
@@ -323,13 +460,19 @@ int main(int argc, char** argv) {
 
     const auto now = Clock::now();
     if (ShouldPrint(result, &stable_state, options, now)) {
-      PrintResult(stable_state.last_candidate);
+      const tuning_engine::TuningResult tuning_result =
+          tuning_engine::evaluate_tuning(
+              stable_state.last_candidate, *preset,
+              options.mode == CliMode::kAuto ? tuning_engine::TuningMode::kAuto
+                                             : tuning_engine::TuningMode::kManual,
+              options.mode == CliMode::kManual ? options.string_index : -1);
+      PrintResult(tuning_result);
     }
   }
 
-  g_keep_running = false;
+  const bool stopped_by_signal = !g_keep_running.load();
   const int exit_code = pclose(ffmpeg_pipe);
-  if (!g_keep_running.load()) {
+  if (stopped_by_signal) {
     return 0;
   }
 
