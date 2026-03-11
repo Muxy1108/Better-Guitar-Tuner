@@ -1,0 +1,36 @@
+{
+  "@@locale": "en",
+  "appTitle": "Better Guitar Tuner",
+  "tuningPresetLabel": "Tuning preset",
+  "modeLabel": "Mode",
+  "autoModeLabel": "Auto",
+  "manualModeLabel": "Manual",
+  "listeningLabel": "Listening",
+  "startListeningLabel": "Start listening",
+  "stopListeningLabel": "Stop listening",
+  "mockBridgeRunning": "Mock audio bridge is streaming development data.",
+  "listeningStopped": "Input stream is stopped.",
+  "tunerReadingLabel": "Current reading",
+  "targetNoteLabel": "Target note",
+  "detectedFrequencyLabel": "Detected frequency",
+  "centsOffsetLabel": "Cents offset",
+  "tuningStatusLabel": "Status",
+  "centsMeterLabel": "Cents meter",
+  "noPitchLabel": "No pitch",
+  "tooLowLabel": "Too low",
+  "inTuneLabel": "In tune",
+  "tooHighLabel": "Too high",
+  "unavailableValue": "Unavailable",
+  "errorLabel": "Error",
+  "stringChipLabel": "String {index}: {note}",
+  "@stringChipLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "note": {
+        "type": "String"
+      }
+    }
+  }
+}

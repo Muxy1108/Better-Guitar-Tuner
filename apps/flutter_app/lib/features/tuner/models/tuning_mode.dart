@@ -1,0 +1,4 @@
+enum TunerMode {
+  auto,
+  manual,
+}

@@ -37,3 +37,14 @@ Status: complete in current bootstrap.
 - Build tuner UI flows in Flutter
 - Surface tuning presets and string targets
 - Add calibration, sensitivity, and error-state handling
+
+Status: Stage 4 MVP UI architecture is now implemented in Flutter with a mock
+bridge. Native realtime capture and advanced UX controls remain for follow-up
+work.
+
+## Phase 5: Native Integration And UX Hardening
+
+- Replace the mock Flutter audio bridge with the production iOS streaming bridge
+- Deliver live structured tuning events from native code into the Flutter view model
+- Add calibration, sensitivity, permission handling, and persistent user settings
+- Validate end-to-end realtime behavior against the desktop debug tooling

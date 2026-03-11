@@ -17,7 +17,10 @@ The repository is organized around a clear separation of concerns:
 
 Responsibility: application shell, screens, state management, and presentation of pitch/tuning information.
 
-Current state: starter Flutter files only. No production UI logic is implemented yet.
+Current state: Stage 4 MVP UI architecture is implemented with an app shell,
+feature-based tuner module, `ChangeNotifier` view model, localization
+scaffolding, asset-backed preset loading, and a mock audio bridge service that
+simulates realtime tuning events until the native iOS bridge is ready.
 
 ### `modules/dsp_core`
 
@@ -63,17 +66,22 @@ tuning guidance in auto or manual mode.
 ## Intended Data Flow
 
 1. The Flutter app selects a tuning preset from `modules/tuning_config`.
-2. On iOS, the native audio layer captures microphone frames with low latency.
-3. Captured samples are passed into the shared C++ DSP core.
-4. The DSP core returns pitch-analysis results to the caller.
-5. The tuning engine maps pitch results to the active tuning preset and
+2. Flutter state is coordinated by the tuner feature view model.
+3. On iOS, the native audio layer will capture microphone frames with low latency.
+4. Captured samples are passed into the shared C++ DSP core.
+5. The DSP core returns pitch-analysis results to the caller.
+6. The tuning engine maps pitch results to the active tuning preset and
    produces target-string guidance.
-6. Flutter renders the current note, target string, and tuning guidance.
-7. The WAV debug runner reuses the same DSP core for offline verification.
-8. The mic debug runner reuses the same DSP core for live desktop verification.
+7. The platform bridge emits structured tuning results through the Flutter-side
+   `AudioBridgeService` abstraction.
+8. Flutter renders the current note, target string, and tuning guidance.
+9. The WAV debug runner reuses the same DSP core for offline verification.
+10. The mic debug runner reuses the same DSP core for live desktop verification.
 
-## Non-Goals Of This Bootstrap
+## Current Stage 4 Notes
 
-- No mobile microphone capture pipeline yet
-- No Flutter platform channel implementation
-- No desktop GUI; the current desktop validation path is CLI-only
+- The Flutter UI is intentionally simple and functional, with cards, control
+  rows, and a cents meter widget rather than final visual polish.
+- The audio bridge is still mocked inside Flutter; no production iOS capture or
+  Flutter platform channel code is shipped in this stage.
+- No desktop GUI exists; the current desktop validation path remains CLI-only.

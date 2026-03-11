@@ -1,0 +1,36 @@
+{
+  "@@locale": "zh",
+  "appTitle": "更好的吉他调音器",
+  "tuningPresetLabel": "调弦预设",
+  "modeLabel": "模式",
+  "autoModeLabel": "自动",
+  "manualModeLabel": "手动",
+  "listeningLabel": "监听",
+  "startListeningLabel": "开始监听",
+  "stopListeningLabel": "停止监听",
+  "mockBridgeRunning": "当前使用模拟音频桥接服务输出开发数据。",
+  "listeningStopped": "输入流已停止。",
+  "tunerReadingLabel": "当前读数",
+  "targetNoteLabel": "目标音",
+  "detectedFrequencyLabel": "检测频率",
+  "centsOffsetLabel": "音分偏移",
+  "tuningStatusLabel": "状态",
+  "centsMeterLabel": "音分表",
+  "noPitchLabel": "无音高",
+  "tooLowLabel": "偏低",
+  "inTuneLabel": "已调准",
+  "tooHighLabel": "偏高",
+  "unavailableValue": "不可用",
+  "errorLabel": "错误",
+  "stringChipLabel": "弦 {index}: {note}",
+  "@stringChipLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "note": {
+        "type": "String"
+      }
+    }
+  }
+}

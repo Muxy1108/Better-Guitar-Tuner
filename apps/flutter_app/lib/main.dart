@@ -1,25 +1,17 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
+import 'app/better_guitar_tuner_app.dart';
+import 'features/tuner/services/asset_tuning_preset_repository.dart';
+import 'features/tuner/services/mock_audio_bridge_service.dart';
+import 'features/tuner/view_models/tuner_view_model.dart';
 
 void main() {
-  runApp(const BetterGuitarTunerApp());
-}
+  WidgetsFlutterBinding.ensureInitialized();
 
-class BetterGuitarTunerApp extends StatelessWidget {
-  const BetterGuitarTunerApp({super.key});
+  final viewModel = TunerViewModel(
+    audioBridgeService: MockAudioBridgeService(),
+    presetRepository: const AssetTuningPresetRepository(),
+  );
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Better Guitar Tuner',
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Better Guitar Tuner')),
-        body: const Center(
-          child: Text(
-            'Project scaffold ready.\nPitch detection and platform integration are not implemented yet.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
-  }
+  runApp(BetterGuitarTunerApp(viewModel: viewModel));
 }

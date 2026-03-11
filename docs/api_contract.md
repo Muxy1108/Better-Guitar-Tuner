@@ -69,6 +69,35 @@ Threshold source:
 - `tuning_engine::TuningThresholds`
 - default constant: `tuning_engine::kDefaultTuningThresholds`
 
+## Flutter App Contract
+
+Location: `apps/flutter_app/lib/features/tuner`
+
+Flutter-side models:
+
+- `PitchFrame`: presentational pitch snapshot with `hasPitch`, detected
+  frequency, cents offset, and optional note metadata
+- `TuningResultModel`: presentational tuning snapshot mirroring the shared
+  engine result shape used by the UI
+- `TuningPreset`: asset-backed preset model loaded from the shared JSON file
+
+Flutter-side state:
+
+- `TunerViewModel`: owns preset selection, auto/manual mode, manual string
+  target, listening state, and the latest tuning reading
+
+Flutter-side bridge:
+
+- `AudioBridgeService`: abstraction for start/stop/configuration updates and
+  streaming structured tuning results into Flutter
+
+Current behavior:
+
+- `AssetTuningPresetRepository` loads presets from the shared JSON bundle
+- `MockAudioBridgeService` emits simulated realtime tuning results for Stage 4
+  UI development
+- No production platform channel or iOS audio bridge is connected yet
+
 ## iOS Bridge Contract
 
 Location: `platform/ios/Sources/AudioCaptureBridge.swift`

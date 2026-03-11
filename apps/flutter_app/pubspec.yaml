@@ -9,6 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
 
 flutter:
+  generate: true
   uses-material-design: true
+  assets:
+    - assets/tuning/tuning_presets.json
