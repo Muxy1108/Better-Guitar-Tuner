@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../models/tuner_settings.dart';
+
 class DesktopRunnerCommand {
   const DesktopRunnerCommand({
     required this.executablePath,
@@ -26,6 +28,7 @@ class DesktopRunnerCommandBuilder {
     required String presetFilePath,
     required String backend,
     required String device,
+    required TunerSettings settings,
     int? manualStringIndex,
     String? workingDirectory,
   }) {
@@ -40,6 +43,12 @@ class DesktopRunnerCommandBuilder {
       backend,
       '--device',
       device,
+      '--a4-reference',
+      settings.a4ReferenceHz.toStringAsFixed(1),
+      '--tolerance-cents',
+      settings.tuningToleranceCents.toStringAsFixed(1),
+      '--sensitivity',
+      settings.sensitivityLevel.name,
     ];
 
     if (manualStringIndex != null) {

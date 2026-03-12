@@ -74,16 +74,20 @@ int main() {
   }
 
   const float a2 = 110.0f;
-  const tuning_engine::TuningThresholds thresholds{5.0f};
+  tuning_engine::TuningThresholds thresholds;
+  thresholds.in_tune_cents = 5.0f;
+  thresholds.a4_reference_hz = 440.0f;
+  thresholds.auto_target_retain_cents = 28.0f;
+  thresholds.auto_target_switch_delta_cents = 7.0f;
   const tuning_engine::TuningResult too_low = tuning_engine::evaluate_tuning(
       MakePitch(a2 * 0.99f), *standard, tuning_engine::TuningMode::kManual, 1,
-      thresholds);
+      -1, thresholds);
   const tuning_engine::TuningResult in_tune = tuning_engine::evaluate_tuning(
       MakePitch(a2), *standard, tuning_engine::TuningMode::kManual, 1,
-      thresholds);
+      -1, thresholds);
   const tuning_engine::TuningResult too_high = tuning_engine::evaluate_tuning(
       MakePitch(a2 * 1.01f), *standard, tuning_engine::TuningMode::kManual, 1,
-      thresholds);
+      -1, thresholds);
 
   if (!Check(too_low.status == tuning_engine::TuningStatus::kTooLow,
              "negative cents offset should classify as too low") ||
@@ -103,6 +107,42 @@ int main() {
              "missing pitch should be surfaced explicitly") ||
       !Check(no_pitch_result.has_target,
              "manual mode should still expose the selected target without pitch")) {
+    return 1;
+  }
+
+  tuning_engine::TuningThresholds alternate_reference;
+  alternate_reference.in_tune_cents = 5.0f;
+  alternate_reference.a4_reference_hz = 442.0f;
+  alternate_reference.auto_target_retain_cents = 28.0f;
+  alternate_reference.auto_target_switch_delta_cents = 7.0f;
+  const tuning_engine::TuningResult calibrated_result =
+      tuning_engine::evaluate_tuning(MakePitch(110.0f), *standard,
+                                     tuning_engine::TuningMode::kManual, 1, -1,
+                                     alternate_reference);
+  if (!Check(calibrated_result.target_frequency_hz > 110.4f,
+             "A4 calibration should update target frequency") ||
+      !Check(calibrated_result.status == tuning_engine::TuningStatus::kTooLow,
+             "440 Hz pitch should read flat against a 442 Hz reference")) {
+    return 1;
+  }
+
+  const tuning_engine::TuningResult calibrated_auto_result =
+      tuning_engine::evaluate_tuning(MakePitch(127.09614f), *standard,
+                                     tuning_engine::TuningMode::kAuto, -1, -1,
+                                     alternate_reference);
+  if (!Check(calibrated_auto_result.target_string_index == 1,
+             "auto mode should choose the nearest string using the active A4 reference") ||
+      !Check(calibrated_auto_result.target_note == "A2",
+             "calibrated auto mode should resolve to A2 near the calibrated midpoint")) {
+    return 1;
+  }
+
+  const tuning_engine::TuningResult retained_auto_target =
+      tuning_engine::evaluate_tuning(MakePitch(141.0f), *standard,
+                                     tuning_engine::TuningMode::kAuto, -1, 2,
+                                     thresholds);
+  if (!Check(retained_auto_target.target_string_index == 2,
+             "auto mode should retain the previous string when the new target is not materially better")) {
     return 1;
   }
 

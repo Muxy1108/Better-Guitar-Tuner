@@ -111,3 +111,18 @@ tuning guidance in auto or manual mode.
   no-pitch or weak-signal UX handling plus lightweight status hysteresis;
   tuning decisions remain in `tuning_engine`.
 - No desktop GUI exists; the current desktop validation path remains CLI-only.
+
+## Stage 7 Notes
+
+- Desktop realtime tuning is still bridged through `mic_debug_runner`, but the
+  runner now accepts calibration-aware settings from Flutter rather than using
+  only static defaults.
+- `dsp_core` remains stateless, but it now exposes richer pitch-analysis
+  metadata such as RMS, peak level, YIN score, and a rejection reason so the
+  desktop bridge can diagnose weak-signal and no-pitch behavior without moving
+  DSP decisions into Flutter.
+- `tuning_engine` still owns string targeting and status classification; auto
+  targeting now applies a small previous-target retention window so open-string
+  tuning is less jumpy under real guitar decay and harmonics.
+- Flutter remains a structured-result consumer. Stage 7 only extends desktop
+  command/config plumbing plus presentation-side target/status smoothing.

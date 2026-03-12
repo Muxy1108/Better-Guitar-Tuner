@@ -149,8 +149,11 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
 
   @override
   Future<void> updateSettings(TunerSettings settings) async {
-    final backendChanged = settings.backend != _settings.backend;
-    final deviceChanged = settings.device != _settings.device;
+    final settingsChanged = settings.backend != _settings.backend ||
+        settings.device != _settings.device ||
+        settings.a4ReferenceHz != _settings.a4ReferenceHz ||
+        settings.tuningToleranceCents != _settings.tuningToleranceCents ||
+        settings.sensitivityLevel != _settings.sensitivityLevel;
     _settings = settings;
 
     _setDiagnostics(
@@ -160,7 +163,7 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       ),
     );
 
-    if (_process == null || (!backendChanged && !deviceChanged)) {
+    if (_process == null || !settingsChanged) {
       return;
     }
 
@@ -406,6 +409,7 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       presetFilePath: presetFile.path,
       backend: _resolvedBackend,
       device: _resolvedDevice,
+      settings: _settings,
       manualStringIndex:
           _currentMode == TunerMode.manual ? _currentManualStringIndex : null,
       workingDirectory: repositoryRoot?.path,

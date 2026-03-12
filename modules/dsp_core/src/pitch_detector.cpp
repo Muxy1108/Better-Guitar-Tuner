@@ -10,14 +10,6 @@
 namespace dsp_core {
 namespace {
 
-constexpr float kMinDetectableFrequencyHz = 70.0f;
-constexpr float kMaxDetectableFrequencyHz = 1'000.0f;
-constexpr float kMinSignalRms = 0.01f;
-constexpr float kMinSignalPeak = 0.03f;
-constexpr float kMaxYinThreshold = 0.20f;
-constexpr float kMinAcceptableConfidence = 0.60f;
-constexpr int kMinimumPeriodsRequired = 2;
-
 struct SignalMetrics {
   float rms = 0.0f;
   float peak = 0.0f;
@@ -82,7 +74,7 @@ void ComputeCumulativeMeanNormalizedDifference(
 }
 
 int FindBestLag(const std::vector<double>& cmndf, int min_lag, int max_lag,
-                double* best_score) {
+                double max_yin_threshold, double* best_score) {
   *best_score = std::numeric_limits<double>::max();
   int best_lag = -1;
 
@@ -98,7 +90,7 @@ int FindBestLag(const std::vector<double>& cmndf, int min_lag, int max_lag,
     return -1;
   }
 
-  if (*best_score <= kMaxYinThreshold) {
+  if (*best_score <= max_yin_threshold) {
     int lag = best_lag;
     while (lag + 1 <= max_lag &&
            cmndf[static_cast<std::size_t>(lag + 1)] <= *best_score) {
@@ -132,26 +124,69 @@ double RefineLagParabolically(const std::vector<double>& cmndf, int lag,
 
 }  // namespace
 
+std::string_view to_string(PitchDecisionReason reason) {
+  switch (reason) {
+    case PitchDecisionReason::kNone:
+      return "none";
+    case PitchDecisionReason::kInvalidInput:
+      return "invalid_input";
+    case PitchDecisionReason::kInsufficientWindow:
+      return "insufficient_window";
+    case PitchDecisionReason::kSignalTooWeakRms:
+      return "signal_too_weak_rms";
+    case PitchDecisionReason::kSignalTooWeakPeak:
+      return "signal_too_weak_peak";
+    case PitchDecisionReason::kNoCandidate:
+      return "no_candidate";
+    case PitchDecisionReason::kPoorPeriodicity:
+      return "poor_periodicity";
+    case PitchDecisionReason::kLowConfidence:
+      return "low_confidence";
+    case PitchDecisionReason::kFrequencyOutOfRange:
+      return "frequency_out_of_range";
+    case PitchDecisionReason::kNoMidiMatch:
+      return "no_midi_match";
+  }
+
+  return "none";
+}
+
 PitchResult detect_pitch(const float* samples, int sample_count, int sample_rate) {
+  return detect_pitch(samples, sample_count, sample_rate, PitchDetectionConfig{});
+}
+
+PitchResult detect_pitch(const float* samples, int sample_count, int sample_rate,
+                         const PitchDetectionConfig& config) {
   PitchResult result{};
 
   if (samples == nullptr || sample_count <= 0 || sample_rate <= 0) {
+    result.decision_reason = PitchDecisionReason::kInvalidInput;
     return result;
   }
 
   const int min_lag =
-      std::max(1, static_cast<int>(sample_rate / kMaxDetectableFrequencyHz));
+      std::max(1, static_cast<int>(sample_rate / config.max_detectable_frequency_hz));
   const int max_lag = std::min(
-      sample_count / kMinimumPeriodsRequired,
-      static_cast<int>(sample_rate / kMinDetectableFrequencyHz));
-  if (sample_count < (max_lag * kMinimumPeriodsRequired) || max_lag <= min_lag + 1) {
+      sample_count / config.minimum_periods_required,
+      static_cast<int>(sample_rate / config.min_detectable_frequency_hz));
+  if (sample_count < (max_lag * config.minimum_periods_required) ||
+      max_lag <= min_lag + 1) {
+    result.decision_reason = PitchDecisionReason::kInsufficientWindow;
     return result;
   }
 
   std::vector<float> centered_samples;
   const SignalMetrics metrics =
       RemoveDcOffset(samples, sample_count, &centered_samples);
-  if (metrics.rms < kMinSignalRms || metrics.peak < kMinSignalPeak) {
+  result.signal_rms = metrics.rms;
+  result.signal_peak = metrics.peak;
+  if (metrics.rms < config.min_signal_rms) {
+    result.decision_reason = PitchDecisionReason::kSignalTooWeakRms;
+    return result;
+  }
+
+  if (metrics.peak < config.min_signal_peak) {
+    result.decision_reason = PitchDecisionReason::kSignalTooWeakPeak;
     return result;
   }
 
@@ -162,14 +197,23 @@ PitchResult detect_pitch(const float* samples, int sample_count, int sample_rate
   ComputeCumulativeMeanNormalizedDifference(difference, &cmndf);
 
   double best_score = 0.0;
-  const int best_lag = FindBestLag(cmndf, min_lag, max_lag, &best_score);
-  if (best_lag < 0 || best_score > kMaxYinThreshold) {
+  const int best_lag = FindBestLag(cmndf, min_lag, max_lag,
+                                   config.max_yin_threshold, &best_score);
+  result.yin_score = static_cast<float>(best_score);
+  if (best_lag < 0) {
+    result.decision_reason = PitchDecisionReason::kNoCandidate;
+    return result;
+  }
+
+  if (best_score > config.max_yin_threshold) {
+    result.decision_reason = PitchDecisionReason::kPoorPeriodicity;
     return result;
   }
 
   const double refined_lag =
       RefineLagParabolically(cmndf, best_lag, min_lag, max_lag);
   if (refined_lag <= 0.0) {
+    result.decision_reason = PitchDecisionReason::kNoCandidate;
     return result;
   }
 
@@ -178,14 +222,20 @@ PitchResult detect_pitch(const float* samples, int sample_count, int sample_rate
   result.confidence =
       static_cast<float>(std::clamp(1.0 - best_score, 0.0, 1.0));
 
-  if (result.detected_frequency_hz < kMinDetectableFrequencyHz ||
-      result.detected_frequency_hz > kMaxDetectableFrequencyHz ||
-      result.confidence < kMinAcceptableConfidence) {
+  if (result.detected_frequency_hz < config.min_detectable_frequency_hz ||
+      result.detected_frequency_hz > config.max_detectable_frequency_hz) {
+    result.decision_reason = PitchDecisionReason::kFrequencyOutOfRange;
+    return result;
+  }
+
+  if (result.confidence < config.min_acceptable_confidence) {
+    result.decision_reason = PitchDecisionReason::kLowConfidence;
     return result;
   }
 
   result.nearest_midi = frequency_to_midi(result.detected_frequency_hz);
   if (result.nearest_midi < 0) {
+    result.decision_reason = PitchDecisionReason::kNoMidiMatch;
     return result;
   }
 
@@ -193,6 +243,7 @@ PitchResult detect_pitch(const float* samples, int sample_count, int sample_rate
   result.cents_offset =
       calculate_cents_offset(result.detected_frequency_hz, result.nearest_midi);
   result.has_pitch = true;
+  result.decision_reason = PitchDecisionReason::kNone;
   return result;
 }
 

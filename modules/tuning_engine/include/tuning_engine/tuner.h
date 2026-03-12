@@ -13,6 +13,7 @@ TuningStatus classify_tuning_status(float cents_offset,
 TuningResult evaluate_tuning(const dsp_core::PitchResult& pitch_result,
                              const TuningPreset& preset, TuningMode mode,
                              int manual_target_string_index = -1,
+                             int previous_auto_target_string_index = -1,
                              const TuningThresholds& thresholds =
                                  kDefaultTuningThresholds);
 

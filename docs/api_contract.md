@@ -18,6 +18,11 @@ Current behavior:
 - The implementation performs monophonic pitch detection and returns note metadata when a stable pitch is found.
 - `dsp_core::note_name_to_midi(...)` and `dsp_core::midi_to_frequency_hz(...)`
   are available for shared note/frequency conversions outside the detector
+- `dsp_core::PitchResult` now also carries signal metrics and a rejection
+  reason so callers can distinguish weak signal, low-confidence, and no-pitch
+  outcomes during realtime diagnostics
+- `dsp_core::detect_pitch(...)` also accepts an optional
+  `dsp_core::PitchDetectionConfig` for caller-tuned desktop calibration
 
 ## Tuning Config Contract
 
@@ -68,6 +73,15 @@ Threshold source:
 
 - `tuning_engine::TuningThresholds`
 - default constant: `tuning_engine::kDefaultTuningThresholds`
+
+Additional threshold fields:
+
+- `a4_reference_hz`: calibration reference used for target frequency and cents
+  calculations
+- `auto_target_retain_cents`: keep the previous auto-selected string when it
+  is still plausibly correct
+- `auto_target_switch_delta_cents`: require a materially better candidate
+  before auto mode switches strings
 
 ## Flutter App Contract
 
@@ -185,7 +199,7 @@ Location: `tools/mic_debug_runner/src/main.cpp`
 CLI shape:
 
 ```text
-mic_debug_runner [--backend <name>] [--device <name>] [--sample-rate <hz>] [--window-size <samples>] [--hop-size <samples>] [--stable-count <n>] [--tuning <preset_id>] [--mode <auto|manual>] [--string-index <n>] [--preset-file <path>]
+mic_debug_runner [--backend <name>] [--device <name>] [--sample-rate <hz>] [--window-size <samples>] [--hop-size <samples>] [--stable-count <n>] [--tuning <preset_id>] [--mode <auto|manual>] [--string-index <n>] [--a4-reference <hz>] [--tolerance-cents <value>] [--sensitivity <relaxed|balanced|precise>] [--preset-file <path>]
 ```
 
 Current behavior:
@@ -195,9 +209,13 @@ Current behavior:
 - Feeds sliding windows into `dsp_core::detect_pitch(...)`
 - Loads tuning presets from the bundled JSON file by default, or from an explicit preset path
 - Resolves the selected tuning preset by id before capture starts
-- Prints exactly one JSON object per stdout line for stable, meaningful
-  detections and keeps human-readable logs on stderr
+- Prints exactly one JSON object per stdout line and keeps human-readable logs
+  on stderr
 - Includes tuning result fields plus signal metadata needed by the Flutter UI
+- Applies sensitivity-specific desktop tuning profiles for stability counts,
+  weak-signal filtering, output confidence, and auto-target retention
+- Emits signal metrics and analysis reasons in JSON and logs target-switch or
+  filtered-frame diagnostics on stderr
 - Stdout is reserved for one JSON object per line so GUI clients can parse it
   incrementally; logs and startup failures should go to stderr
 - Remains the closest desktop reference path for the Stage 5 iOS bridge flow

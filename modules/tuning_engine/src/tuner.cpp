@@ -8,14 +8,15 @@
 namespace tuning_engine {
 namespace {
 
-int FindNearestStringIndex(const TuningPreset& preset, float frequency_hz) {
+int FindNearestStringIndex(const TuningPreset& preset, float frequency_hz,
+                           const TuningThresholds& thresholds) {
   int best_index = -1;
   float best_abs_cents = std::numeric_limits<float>::max();
 
   for (std::size_t i = 0; i < preset.strings.size(); ++i) {
     const TuningString& target = preset.strings[i];
-    const float cents_offset =
-        dsp_core::calculate_cents_offset(frequency_hz, target.midi_note);
+    const float cents_offset = dsp_core::calculate_cents_offset(
+        frequency_hz, target.midi_note, thresholds.a4_reference_hz);
     const float abs_cents = std::abs(cents_offset);
     if (abs_cents < best_abs_cents) {
       best_abs_cents = abs_cents;
@@ -26,7 +27,51 @@ int FindNearestStringIndex(const TuningPreset& preset, float frequency_hz) {
   return best_index;
 }
 
+float CalculateOffsetForString(float frequency_hz, const TuningString& target,
+                               const TuningThresholds& thresholds) {
+  return dsp_core::calculate_cents_offset(
+      frequency_hz, target.midi_note, thresholds.a4_reference_hz);
+}
+
+int ResolveAutoTargetStringIndex(const TuningPreset& preset, float frequency_hz,
+                                 int previous_target_string_index,
+                                 const TuningThresholds& thresholds) {
+  const int candidate_index =
+      FindNearestStringIndex(preset, frequency_hz, thresholds);
+  if (candidate_index < 0) {
+    return -1;
+  }
+
+  if (previous_target_string_index < 0 ||
+      previous_target_string_index >= static_cast<int>(preset.strings.size()) ||
+      previous_target_string_index == candidate_index) {
+    return candidate_index;
+  }
+
+  const TuningString& candidate =
+      preset.strings[static_cast<std::size_t>(candidate_index)];
+  const TuningString& previous =
+      preset.strings[static_cast<std::size_t>(previous_target_string_index)];
+  const float candidate_abs_cents =
+      std::abs(CalculateOffsetForString(frequency_hz, candidate, thresholds));
+  const float previous_abs_cents =
+      std::abs(CalculateOffsetForString(frequency_hz, previous, thresholds));
+
+  const bool can_retain_previous =
+      previous_abs_cents <= thresholds.auto_target_retain_cents;
+  const bool candidate_is_materially_better =
+      candidate_abs_cents + thresholds.auto_target_switch_delta_cents <
+      previous_abs_cents;
+
+  if (can_retain_previous && !candidate_is_materially_better) {
+    return previous_target_string_index;
+  }
+
+  return candidate_index;
+}
+
 void PopulateTargetFields(const TuningPreset& preset, int target_string_index,
+                          const TuningThresholds& thresholds,
                           TuningResult* result) {
   if (target_string_index < 0 ||
       target_string_index >= static_cast<int>(preset.strings.size())) {
@@ -37,7 +82,8 @@ void PopulateTargetFields(const TuningPreset& preset, int target_string_index,
       preset.strings[static_cast<std::size_t>(target_string_index)];
   result->target_string_index = target_string_index;
   result->target_note = target.note;
-  result->target_frequency_hz = target.frequency_hz;
+  result->target_frequency_hz = dsp_core::midi_to_frequency_hz(
+      target.midi_note, thresholds.a4_reference_hz);
   result->has_target = true;
 }
 
@@ -81,6 +127,7 @@ TuningStatus classify_tuning_status(float cents_offset,
 TuningResult evaluate_tuning(const dsp_core::PitchResult& pitch_result,
                              const TuningPreset& preset, TuningMode mode,
                              int manual_target_string_index,
+                             int previous_auto_target_string_index,
                              const TuningThresholds& thresholds) {
   TuningResult result;
   result.tuning_id = preset.id;
@@ -101,11 +148,12 @@ TuningResult evaluate_tuning(const dsp_core::PitchResult& pitch_result,
       return result;
     }
     target_string_index = manual_target_string_index;
-    PopulateTargetFields(preset, target_string_index, &result);
+    PopulateTargetFields(preset, target_string_index, thresholds, &result);
   } else if (pitch_result.has_pitch) {
-    target_string_index =
-        FindNearestStringIndex(preset, pitch_result.detected_frequency_hz);
-    PopulateTargetFields(preset, target_string_index, &result);
+    target_string_index = ResolveAutoTargetStringIndex(
+        preset, pitch_result.detected_frequency_hz,
+        previous_auto_target_string_index, thresholds);
+    PopulateTargetFields(preset, target_string_index, thresholds, &result);
   }
 
   if (!pitch_result.has_pitch) {
@@ -120,8 +168,8 @@ TuningResult evaluate_tuning(const dsp_core::PitchResult& pitch_result,
 
   const TuningString& target =
       preset.strings[static_cast<std::size_t>(target_string_index)];
-  result.cents_offset = dsp_core::calculate_cents_offset(
-      pitch_result.detected_frequency_hz, target.midi_note);
+  result.cents_offset = CalculateOffsetForString(
+      pitch_result.detected_frequency_hz, target, thresholds);
   result.status = classify_tuning_status(result.cents_offset, thresholds);
   return result;
 }

@@ -13,8 +13,9 @@ constexpr std::array<const char*, 12> kNoteNames = {
     "F#", "G",  "G#", "A",  "A#", "B",
 };
 
-float midi_to_frequency(int midi_note) {
-  return 440.0f * std::pow(2.0f, static_cast<float>(midi_note - 69) / 12.0f);
+float midi_to_frequency(int midi_note, float a4_reference_hz) {
+  return a4_reference_hz *
+         std::pow(2.0f, static_cast<float>(midi_note - 69) / 12.0f);
 }
 
 int note_name_to_index(const std::string& note_name) {
@@ -59,13 +60,13 @@ int note_name_to_index(const std::string& note_name) {
 
 }  // namespace
 
-int frequency_to_midi(float frequency_hz) {
-  if (frequency_hz <= 0.0f) {
+int frequency_to_midi(float frequency_hz, float a4_reference_hz) {
+  if (frequency_hz <= 0.0f || a4_reference_hz <= 0.0f) {
     return -1;
   }
 
   const float midi =
-      69.0f + (12.0f * std::log2(frequency_hz / 440.0f));
+      69.0f + (12.0f * std::log2(frequency_hz / a4_reference_hz));
   return static_cast<int>(std::lround(midi));
 }
 
@@ -114,14 +115,21 @@ std::string midi_to_note_name(int midi_note) {
          std::to_string(octave);
 }
 
-float midi_to_frequency_hz(int midi_note) { return midi_to_frequency(midi_note); }
+float midi_to_frequency_hz(int midi_note, float a4_reference_hz) {
+  if (a4_reference_hz <= 0.0f) {
+    return 0.0f;
+  }
 
-float calculate_cents_offset(float frequency_hz, int midi_note) {
+  return midi_to_frequency(midi_note, a4_reference_hz);
+}
+
+float calculate_cents_offset(float frequency_hz, int midi_note,
+                             float a4_reference_hz) {
   if (frequency_hz <= 0.0f || midi_note < 0) {
     return 0.0f;
   }
 
-  const float reference_frequency = midi_to_frequency(midi_note);
+  const float reference_frequency = midi_to_frequency(midi_note, a4_reference_hz);
   if (reference_frequency <= 0.0f) {
     return 0.0f;
   }

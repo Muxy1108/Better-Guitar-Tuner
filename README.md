@@ -1,6 +1,6 @@
 # Better-Guitar-Tuner
 
-Better-Guitar-Tuner is bootstrapped as a multi-module project for a guitar tuner app with:
+Better-Guitar-Tuner is a multi-module guitar tuner project with:
 
 - Flutter UI in `apps/flutter_app`
 - Shared C++ DSP core in `modules/dsp_core`
@@ -10,11 +10,9 @@ Better-Guitar-Tuner is bootstrapped as a multi-module project for a guitar tuner
 - Offline WAV debugging tools in `tools/wav_debug_runner`
 - Realtime microphone debugging in `tools/mic_debug_runner`
 
-The current repository state is intentionally minimal. It provides structure, starter build files, and placeholder source code without claiming implemented tuning or audio-capture features.
-
-The shared tuning business layer now loads preset definitions from JSON and can
-convert realtime pitch detections into target-string guidance for both CLI and
-future mobile callers.
+The current repository includes a working shared DSP and tuning pipeline, a
+Flutter tuner UI, a desktop subprocess bridge around `mic_debug_runner`, and
+an iOS native capture bridge.
 
 ## Repository Layout
 
@@ -36,12 +34,13 @@ cmake -S . -B build
 cmake --build build
 ```
 
-The realtime mic debug runner now accepts tuning preset selection and prints
+The realtime mic debug runner now accepts calibration-aware settings and prints
 structured tuning guidance:
 
 ```bash
 ./build/tools/mic_debug_runner/mic_debug_runner --tuning standard --mode auto
 ./build/tools/mic_debug_runner/mic_debug_runner --tuning standard --mode manual --string-index 5
+./build/tools/mic_debug_runner/mic_debug_runner --tuning standard --mode auto --a4-reference 442 --tolerance-cents 4 --sensitivity balanced
 ```
 
 The Flutter app now selects its audio bridge by platform:
@@ -71,11 +70,35 @@ Stage 5B hardens that bridge in a few ways:
 - runner command construction is platform-aware so Linux and Windows executable
   differences stay isolated in one place
 
-Current desktop limitations:
+## Desktop Calibration Workflow
+
+- Start with `balanced` sensitivity, `A4 = 440.0 Hz`, and tolerance near
+  `4-5 cents`.
+- Pluck one open string cleanly and let it ring. The desktop bridge should now
+  show weak-signal or no-pitch transitions instead of holding stale pitched
+  output indefinitely.
+- If auto mode jumps between adjacent strings, keep `balanced` or `relaxed`
+  sensitivity and retest with one open string at a time.
+- If the meter feels too slow for deliberate single-string plucks, move to
+  `precise`; if it feels too twitchy under room noise or sympathetic strings,
+  move to `relaxed`.
+- Backend and device changes are applied by restarting the desktop runner from
+  Flutter, so the selected source is reflected immediately in diagnostics.
+
+## Real-Guitar Test Scenarios
+
+- Standard tuning, one open string plucked at a time, moderate picking attack
+- Low E and Drop D style low-frequency ringing where weak harmonics can mask
+  the fundamental
+- Notes decaying into weak-signal and no-pitch states
+- Auto mode with neighboring strings resonating sympathetically
+- Manual mode on a fixed target string while repeatedly plucking slightly sharp
+  and slightly flat notes
+
+## Current Desktop Limitations
 
 - Linux is the primary validated desktop path today
 - Windows command defaults and executable resolution are prepared in Flutter,
-  but real device-name validation still needs to be tested on a Windows host
-- A4 reference, tolerance, sensitivity, backend/device, and mock override now
-  have a Flutter-side settings foundation; persistence and full UI controls are
-  still follow-up work
+  but real DirectShow device-name validation still needs host-side testing
+- iOS still uses its own native capture path and has not yet adopted the new
+  desktop-only calibration profiles or diagnostics fields

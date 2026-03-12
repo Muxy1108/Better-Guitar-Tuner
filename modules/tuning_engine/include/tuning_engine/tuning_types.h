@@ -34,6 +34,9 @@ enum class TuningStatus {
 
 struct TuningThresholds {
   float in_tune_cents = 5.0f;
+  float a4_reference_hz = 440.0f;
+  float auto_target_retain_cents = 28.0f;
+  float auto_target_switch_delta_cents = 7.0f;
 };
 
 inline constexpr TuningThresholds kDefaultTuningThresholds{};

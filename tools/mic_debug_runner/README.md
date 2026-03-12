@@ -83,13 +83,23 @@ Useful flags:
 --tuning <preset_id>
 --mode <auto|manual>
 --string-index <n>
+--a4-reference <hz>
+--tolerance-cents <value>
+--sensitivity <relaxed|balanced|precise>
 --preset-file <path>
 ```
 
 Example output:
 
 ```json
-{"tuning_id":"standard","mode":"auto","target_string_index":1,"target_note":"A2","target_frequency_hz":110.00,"detected_frequency_hz":110.14,"cents_offset":2.18,"status":"in_tune","has_detected_pitch":true,"has_target":true,"pitch_confidence":0.94,"pitch_note":"A2","pitch_midi":45,"signal_state":"pitched"}
+{"tuning_id":"standard","mode":"auto","target_string_index":1,"target_note":"A2","target_frequency_hz":110.00,"detected_frequency_hz":110.14,"cents_offset":2.18,"status":"in_tune","has_detected_pitch":true,"has_target":true,"pitch_confidence":0.94,"pitch_note":"A2","pitch_midi":45,"signal_state":"pitched","signal_rms":0.041,"signal_peak":0.182,"pitch_yin_score":0.061,"analysis_reason":"none"}
+```
+
+Calibration-oriented examples:
+
+```bash
+./build/tools/mic_debug_runner/mic_debug_runner --tuning standard --mode auto --a4-reference 442 --tolerance-cents 4 --sensitivity balanced
+./build/tools/mic_debug_runner/mic_debug_runner --tuning standard --mode manual --string-index 0 --sensitivity relaxed
 ```
 
 ## Known Limitations
@@ -100,8 +110,8 @@ Example output:
 - other backends (`alsa`, `avfoundation`, `dshow`, `lavfi`) continue to use a simpler FFmpeg command path because they do not share the same Pulse timestamp behavior
 - the capture backend is delegated to `ffmpeg`, so available device names depend on the local OS/audio stack
 - the tool is intended for monophonic debugging, not production-grade realtime UX
-- only stable frames are printed; transient or weak detections are intentionally suppressed
-- manual mode still uses the same pitch-detection stability gate before emitting guidance
+- weak-signal and no-pitch transitions are now emitted as structured frames, so
+  GUI clients can react without scraping stderr
 - stdout is structured but minimal; there is no curses UI or waveform visualization
 - stdout is reserved for machine-readable NDJSON output; startup and runtime
   logs stay on stderr so a GUI bridge can parse stdout safely
@@ -122,3 +132,15 @@ Example output:
 - Some Linux systems still emit FFmpeg/Pulse timestamp warnings when the upstream audio server delivers irregular packet timing.
 - The current command keeps the existing realtime tuning pipeline intact by normalizing timestamps inside FFmpeg and still emitting raw mono `f32le` PCM on stdout.
 - If warnings remain, they are usually caused by host-side Pulse/PipeWire timing jitter rather than by the downstream DSP or tuning engine.
+
+## Real-Instrument Notes
+
+- `balanced` is the default Stage 7 profile and is the safest starting point
+  for real guitar tuning on desktop.
+- `relaxed` trades responsiveness for stronger filtering and slower target
+  changes.
+- `precise` is faster and more responsive, but it tolerates weaker detections
+  and can show more movement when a string is noisy or decaying.
+- Auto mode now retains the previous string briefly when a neighboring string
+  is only marginally closer, which helps during open-string decay and
+  sympathetic resonance.

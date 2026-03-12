@@ -18,7 +18,10 @@ class TunerViewModel extends ChangeNotifier {
       Duration(milliseconds: 280);
   static const Duration _defaultStatusHoldDuration =
       Duration(milliseconds: 180);
+  static const Duration _defaultTargetSwitchHoldDuration =
+      Duration(milliseconds: 140);
   static const double _statusHysteresisCents = 2.0;
+  static const double _maxSmoothedCentsJump = 24.0;
 
   TunerViewModel({
     required AudioBridgeService audioBridgeService,
@@ -47,6 +50,8 @@ class TunerViewModel extends ChangeNotifier {
   TunerSettings _settings = const TunerSettings();
   TuningResultModel? _pendingSignalResult;
   DateTime? _pendingSignalSince;
+  TuningResultModel? _pendingTargetResult;
+  DateTime? _pendingTargetSince;
   DateTime? _lastUiUpdateAt;
   DateTime? _lastStableStatusAt;
 
@@ -117,6 +122,10 @@ class TunerViewModel extends ChangeNotifier {
 
     _selectedPreset = preset;
     _manualStringIndex = 0;
+    _pendingSignalResult = null;
+    _pendingSignalSince = null;
+    _pendingTargetResult = null;
+    _pendingTargetSince = null;
     _latestResult = _buildIdleResult();
     _latestRawResult = _latestResult;
     _listeningErrorMessage = null;
@@ -131,6 +140,10 @@ class TunerViewModel extends ChangeNotifier {
     }
 
     _mode = mode;
+    _pendingSignalResult = null;
+    _pendingSignalSince = null;
+    _pendingTargetResult = null;
+    _pendingTargetSince = null;
     _latestResult = _buildIdleResult();
     _latestRawResult = _latestResult;
     _listeningErrorMessage = null;
@@ -144,6 +157,10 @@ class TunerViewModel extends ChangeNotifier {
     }
 
     _manualStringIndex = index;
+    _pendingSignalResult = null;
+    _pendingSignalSince = null;
+    _pendingTargetResult = null;
+    _pendingTargetSince = null;
     _latestResult = _buildIdleResult();
     _latestRawResult = _latestResult;
     _listeningErrorMessage = null;
@@ -191,6 +208,8 @@ class TunerViewModel extends ChangeNotifier {
       _isListening = true;
       _pendingSignalResult = null;
       _pendingSignalSince = null;
+      _pendingTargetResult = null;
+      _pendingTargetSince = null;
       notifyListeners();
     } catch (error) {
       _isListening = false;
@@ -244,6 +263,8 @@ class TunerViewModel extends ChangeNotifier {
     _isListening = false;
     _pendingSignalResult = null;
     _pendingSignalSince = null;
+    _pendingTargetResult = null;
+    _pendingTargetSince = null;
     _latestResult = _buildIdleResult();
     _latestRawResult = _latestResult;
     _listeningErrorMessage = _formatError(error);
@@ -329,6 +350,23 @@ class TunerViewModel extends ChangeNotifier {
     _pendingSignalResult = null;
     _pendingSignalSince = null;
 
+    if (_shouldDelayTargetSwitch(_latestResult, result)) {
+      if (_pendingTargetResult?.targetStringIndex != result.targetStringIndex) {
+        _pendingTargetResult = result;
+        _pendingTargetSince = now;
+        return null;
+      }
+
+      if (_pendingTargetSince != null &&
+          now.difference(_pendingTargetSince!) <
+              _targetSwitchHoldDurationFor(_settings)) {
+        return null;
+      }
+    }
+
+    _pendingTargetResult = null;
+    _pendingTargetSince = null;
+
     if (!_latestResult.hasUsablePitch || !result.hasUsablePitch) {
       final stabilized = _applyStatusHysteresis(result, now);
       if (stabilized.hasUsablePitch) {
@@ -346,11 +384,16 @@ class TunerViewModel extends ChangeNotifier {
     }
 
     final retainedWeight = 1.0 - smoothingFactor;
-    final smoothedFrequencyHz =
-        (_latestResult.pitchFrame.frequencyHz * retainedWeight) +
+    final centsDelta = result.centsOffset - _latestResult.centsOffset;
+    final shouldBypassSmoothing = centsDelta.abs() >= _maxSmoothedCentsJump;
+    final smoothedFrequencyHz = shouldBypassSmoothing
+        ? result.pitchFrame.frequencyHz
+        : (_latestResult.pitchFrame.frequencyHz * retainedWeight) +
             (result.pitchFrame.frequencyHz * smoothingFactor);
-    final smoothedCents = (_latestResult.centsOffset * retainedWeight) +
-        (result.centsOffset * smoothingFactor);
+    final smoothedCents = shouldBypassSmoothing
+        ? result.centsOffset
+        : (_latestResult.centsOffset * retainedWeight) +
+            (result.centsOffset * smoothingFactor);
 
     final stabilized = _applyStatusHysteresis(
       result.copyWith(
@@ -482,11 +525,11 @@ class TunerViewModel extends ChangeNotifier {
   double _smoothingFactorFor(TunerSettings settings) {
     switch (settings.sensitivityLevel) {
       case TunerSensitivityLevel.relaxed:
-        return 0.42;
+        return 0.36;
       case TunerSensitivityLevel.precise:
-        return 0.82;
+        return 0.84;
       case TunerSensitivityLevel.balanced:
-        return 0.62;
+        return 0.68;
     }
   }
 
@@ -499,5 +542,30 @@ class TunerViewModel extends ChangeNotifier {
       case TunerSensitivityLevel.balanced:
         return _defaultStatusHoldDuration;
     }
+  }
+
+  Duration _targetSwitchHoldDurationFor(TunerSettings settings) {
+    switch (settings.sensitivityLevel) {
+      case TunerSensitivityLevel.relaxed:
+        return const Duration(milliseconds: 190);
+      case TunerSensitivityLevel.precise:
+        return const Duration(milliseconds: 90);
+      case TunerSensitivityLevel.balanced:
+        return _defaultTargetSwitchHoldDuration;
+    }
+  }
+
+  bool _shouldDelayTargetSwitch(
+    TuningResultModel previous,
+    TuningResultModel next,
+  ) {
+    return previous.hasUsablePitch &&
+        next.hasUsablePitch &&
+        previous.mode == TunerMode.auto &&
+        next.mode == TunerMode.auto &&
+        previous.tuningId == next.tuningId &&
+        previous.targetStringIndex != null &&
+        next.targetStringIndex != null &&
+        previous.targetStringIndex != next.targetStringIndex;
   }
 }

@@ -61,3 +61,18 @@ Status update: Stage 5B hardens the desktop subprocess bridge with lifecycle
 state, non-fatal stdout parsing, stderr diagnostics, lightweight settings
 plumbing, view-model smoothing/hysteresis improvements, and a command-builder
 split that prepares the desktop path for future Windows support.
+
+## Stage 7: Desktop Calibration And Release Hardening
+
+- Tune desktop DSP and bridge defaults against real guitar input instead of
+  only synthetic or idealized detections
+- Make Flutter calibration controls affect desktop runtime behavior
+- Reduce auto-target jumping while preserving predictable manual mode behavior
+- Improve diagnostics for weak signal, no pitch, confidence rejection, and
+  target switching
+- Document a practical calibration workflow and known real-instrument test
+  scenarios
+
+Status update: Stage 7 calibration hardening is implemented for the desktop
+runner path with calibration-aware settings plumbing, richer DSP diagnostics,
+auto-target retention, and Flutter-side target/status smoothing updates.
