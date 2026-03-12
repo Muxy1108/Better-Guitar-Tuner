@@ -19,12 +19,33 @@
   "listeningFailureTitle": "Listening failed",
   "listeningFailureMessage": "The audio bridge could not start or continue listening.",
   "bridgeDiagnosticsLabel": "Bridge diagnostics",
+  "diagnosticsSubtitle": "Runtime bridge and smoothing details",
+  "settingsLabel": "Settings",
+  "settingsSubtitle": "Calibration-ready UI controls and bridge targets",
+  "a4ReferenceLabel": "A4 reference",
+  "tuningToleranceSettingLabel": "Tuning tolerance",
+  "sensitivityLabel": "Sensitivity",
+  "sensitivityRelaxedLabel": "Relaxed",
+  "sensitivityBalancedLabel": "Balanced",
+  "sensitivityPreciseLabel": "Precise",
+  "settingsBackendHint": "For example: pulse, avfoundation, dshow",
+  "settingsDeviceHint": "For example: default, :0, audio=Microphone",
+  "mockBridgeOverrideLabel": "Mock bridge override",
+  "mockBridgeOverrideHelp": "Development toggle stored in settings. Current startup bridge selection is unchanged until relaunch.",
+  "bridgeTypeLabel": "Bridge type",
+  "bridgeTypeMock": "Mock",
+  "bridgeTypeNative": "Native",
+  "bridgeTypeDesktop": "Desktop process",
   "bridgeStateLabel": "Bridge state",
   "bridgeBackendLabel": "Backend",
   "bridgeDeviceLabel": "Device",
   "bridgeExitCodeLabel": "Last exit code",
   "bridgeLastErrorLabel": "Last bridge error",
   "bridgeStderrLabel": "Recent stderr",
+  "pitchStateLabel": "Pitch state",
+  "pitchedLabel": "Pitched",
+  "rawCentsLabel": "Raw cents",
+  "smoothedCentsLabel": "Smoothed cents",
   "bridgeStateIdle": "Idle",
   "bridgeStateStarting": "Starting",
   "bridgeStateListening": "Listening",
@@ -45,6 +66,22 @@
   "tooLowLabel": "Too low",
   "inTuneLabel": "In tune",
   "tooHighLabel": "Too high",
+  "frequencyValue": "{value} Hz",
+  "@frequencyValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "centsValue": "{value} cents",
+  "@centsValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "unavailableValue": "Unavailable",
   "errorLabel": "Error",
   "stringChipLabel": "String {index}: {note}",

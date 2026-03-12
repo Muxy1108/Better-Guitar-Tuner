@@ -6,24 +6,51 @@ class CentsMeter extends StatelessWidget {
   const CentsMeter({
     required this.centsOffset,
     required this.hasPitch,
+    required this.displayLabel,
     super.key,
   });
 
   final double centsOffset;
   final bool hasPitch;
+  final String displayLabel;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 140,
-      width: double.infinity,
-      child: CustomPaint(
-        painter: _CentsMeterPainter(
-          centsOffset: centsOffset.clamp(-50, 50),
-          hasPitch: hasPitch,
-          colorScheme: Theme.of(context).colorScheme,
-        ),
-      ),
+    final targetOffset = hasPitch ? centsOffset.clamp(-50.0, 50.0) : 0.0;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: targetOffset),
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedOffset, child) {
+        return SizedBox(
+          height: 170,
+          width: double.infinity,
+          child: Column(
+            children: [
+              Expanded(
+                child: CustomPaint(
+                  painter: _CentsMeterPainter(
+                    centsOffset: animatedOffset,
+                    hasPitch: hasPitch,
+                    colorScheme: Theme.of(context).colorScheme,
+                  ),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 120),
+                style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                child: Text(displayLabel),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -84,23 +111,6 @@ class _CentsMeterPainter extends CustomPainter {
     );
     canvas.drawLine(center, needleEnd, activePaint);
     canvas.drawCircle(center, 7, Paint()..color = activePaint.color);
-
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: hasPitch ? '${centsOffset.toStringAsFixed(1)} cents' : 'No pitch',
-        style: TextStyle(
-          color: colorScheme.onSurface,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: size.width);
-
-    textPainter.paint(
-      canvas,
-      Offset((size.width - textPainter.width) / 2, size.height - 28),
-    );
   }
 
   Color _needleColor() {

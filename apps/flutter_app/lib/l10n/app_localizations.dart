@@ -212,6 +212,108 @@ abstract class AppLocalizations {
   /// **'Bridge diagnostics'**
   String get bridgeDiagnosticsLabel;
 
+  /// No description provided for @diagnosticsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime bridge and smoothing details'**
+  String get diagnosticsSubtitle;
+
+  /// No description provided for @settingsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsLabel;
+
+  /// No description provided for @settingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calibration-ready UI controls and bridge targets'**
+  String get settingsSubtitle;
+
+  /// No description provided for @a4ReferenceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'A4 reference'**
+  String get a4ReferenceLabel;
+
+  /// No description provided for @tuningToleranceSettingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuning tolerance'**
+  String get tuningToleranceSettingLabel;
+
+  /// No description provided for @sensitivityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitivity'**
+  String get sensitivityLabel;
+
+  /// No description provided for @sensitivityRelaxedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Relaxed'**
+  String get sensitivityRelaxedLabel;
+
+  /// No description provided for @sensitivityBalancedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get sensitivityBalancedLabel;
+
+  /// No description provided for @sensitivityPreciseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Precise'**
+  String get sensitivityPreciseLabel;
+
+  /// No description provided for @settingsBackendHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example: pulse, avfoundation, dshow'**
+  String get settingsBackendHint;
+
+  /// No description provided for @settingsDeviceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For example: default, :0, audio=Microphone'**
+  String get settingsDeviceHint;
+
+  /// No description provided for @mockBridgeOverrideLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mock bridge override'**
+  String get mockBridgeOverrideLabel;
+
+  /// No description provided for @mockBridgeOverrideHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Development toggle stored in settings. Current startup bridge selection is unchanged until relaunch.'**
+  String get mockBridgeOverrideHelp;
+
+  /// No description provided for @bridgeTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge type'**
+  String get bridgeTypeLabel;
+
+  /// No description provided for @bridgeTypeMock.
+  ///
+  /// In en, this message translates to:
+  /// **'Mock'**
+  String get bridgeTypeMock;
+
+  /// No description provided for @bridgeTypeNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Native'**
+  String get bridgeTypeNative;
+
+  /// No description provided for @bridgeTypeDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop process'**
+  String get bridgeTypeDesktop;
+
   /// No description provided for @bridgeStateLabel.
   ///
   /// In en, this message translates to:
@@ -247,6 +349,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recent stderr'**
   String get bridgeStderrLabel;
+
+  /// No description provided for @pitchStateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pitch state'**
+  String get pitchStateLabel;
+
+  /// No description provided for @pitchedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pitched'**
+  String get pitchedLabel;
+
+  /// No description provided for @rawCentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw cents'**
+  String get rawCentsLabel;
+
+  /// No description provided for @smoothedCentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoothed cents'**
+  String get smoothedCentsLabel;
 
   /// No description provided for @bridgeStateIdle.
   ///
@@ -367,6 +493,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Too high'**
   String get tooHighLabel;
+
+  /// No description provided for @frequencyValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} Hz'**
+  String frequencyValue(String value);
+
+  /// No description provided for @centsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} cents'**
+  String centsValue(String value);
 
   /// No description provided for @unavailableValue.
   ///

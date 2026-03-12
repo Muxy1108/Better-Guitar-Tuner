@@ -67,6 +67,57 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bridgeDiagnosticsLabel => '桥接诊断';
 
   @override
+  String get diagnosticsSubtitle => '运行中的桥接与平滑详情';
+
+  @override
+  String get settingsLabel => '设置';
+
+  @override
+  String get settingsSubtitle => '为校准预留的界面控制项与桥接目标';
+
+  @override
+  String get a4ReferenceLabel => 'A4 参考频率';
+
+  @override
+  String get tuningToleranceSettingLabel => '调音容差';
+
+  @override
+  String get sensitivityLabel => '灵敏度';
+
+  @override
+  String get sensitivityRelaxedLabel => '平稳';
+
+  @override
+  String get sensitivityBalancedLabel => '均衡';
+
+  @override
+  String get sensitivityPreciseLabel => '精确';
+
+  @override
+  String get settingsBackendHint => '例如：pulse、avfoundation、dshow';
+
+  @override
+  String get settingsDeviceHint => '例如：default、:0、audio=Microphone';
+
+  @override
+  String get mockBridgeOverrideLabel => '模拟桥接覆盖';
+
+  @override
+  String get mockBridgeOverrideHelp => '该开发开关会保存在设置中。当前启动时选择的桥接服务需在重新启动后才会改变。';
+
+  @override
+  String get bridgeTypeLabel => '桥接类型';
+
+  @override
+  String get bridgeTypeMock => '模拟';
+
+  @override
+  String get bridgeTypeNative => '原生';
+
+  @override
+  String get bridgeTypeDesktop => '桌面进程';
+
+  @override
   String get bridgeStateLabel => '桥接状态';
 
   @override
@@ -83,6 +134,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get bridgeStderrLabel => '最近 stderr';
+
+  @override
+  String get pitchStateLabel => '音高状态';
+
+  @override
+  String get pitchedLabel => '已检测音高';
+
+  @override
+  String get rawCentsLabel => '原始音分';
+
+  @override
+  String get smoothedCentsLabel => '平滑后音分';
 
   @override
   String get bridgeStateIdle => '空闲';
@@ -143,6 +206,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tooHighLabel => '偏高';
+
+  @override
+  String frequencyValue(String value) {
+    return '$value Hz';
+  }
+
+  @override
+  String centsValue(String value) {
+    return '$value 音分';
+  }
 
   @override
   String get unavailableValue => '不可用';

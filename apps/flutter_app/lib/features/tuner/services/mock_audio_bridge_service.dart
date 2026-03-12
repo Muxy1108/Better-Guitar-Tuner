@@ -227,6 +227,6 @@ class MockAudioBridgeService implements AudioBridgeService {
     final semitone = semitoneMap[noteKey] ?? 9;
     final midi = (octave + 1) * 12 + semitone;
 
-    return 440 * math.pow(2, (midi - 69) / 12).toDouble();
+    return _settings.a4ReferenceHz * math.pow(2, (midi - 69) / 12).toDouble();
   }
 }

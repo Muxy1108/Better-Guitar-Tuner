@@ -19,12 +19,33 @@
   "listeningFailureTitle": "监听启动失败",
   "listeningFailureMessage": "音频桥接服务无法开始或继续监听。",
   "bridgeDiagnosticsLabel": "桥接诊断",
+  "diagnosticsSubtitle": "运行中的桥接与平滑详情",
+  "settingsLabel": "设置",
+  "settingsSubtitle": "为校准预留的界面控制项与桥接目标",
+  "a4ReferenceLabel": "A4 参考频率",
+  "tuningToleranceSettingLabel": "调音容差",
+  "sensitivityLabel": "灵敏度",
+  "sensitivityRelaxedLabel": "平稳",
+  "sensitivityBalancedLabel": "均衡",
+  "sensitivityPreciseLabel": "精确",
+  "settingsBackendHint": "例如：pulse、avfoundation、dshow",
+  "settingsDeviceHint": "例如：default、:0、audio=Microphone",
+  "mockBridgeOverrideLabel": "模拟桥接覆盖",
+  "mockBridgeOverrideHelp": "该开发开关会保存在设置中。当前启动时选择的桥接服务需在重新启动后才会改变。",
+  "bridgeTypeLabel": "桥接类型",
+  "bridgeTypeMock": "模拟",
+  "bridgeTypeNative": "原生",
+  "bridgeTypeDesktop": "桌面进程",
   "bridgeStateLabel": "桥接状态",
   "bridgeBackendLabel": "后端",
   "bridgeDeviceLabel": "设备",
   "bridgeExitCodeLabel": "最近退出码",
   "bridgeLastErrorLabel": "最近桥接错误",
   "bridgeStderrLabel": "最近 stderr",
+  "pitchStateLabel": "音高状态",
+  "pitchedLabel": "已检测音高",
+  "rawCentsLabel": "原始音分",
+  "smoothedCentsLabel": "平滑后音分",
   "bridgeStateIdle": "空闲",
   "bridgeStateStarting": "启动中",
   "bridgeStateListening": "监听中",
@@ -45,6 +66,22 @@
   "tooLowLabel": "偏低",
   "inTuneLabel": "已调准",
   "tooHighLabel": "偏高",
+  "frequencyValue": "{value} Hz",
+  "@frequencyValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "centsValue": "{value} 音分",
+  "@centsValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "unavailableValue": "不可用",
   "errorLabel": "错误",
   "stringChipLabel": "弦 {index}: {note}",

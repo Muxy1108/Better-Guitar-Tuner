@@ -73,6 +73,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeDiagnosticsLabel => 'Bridge diagnostics';
 
   @override
+  String get diagnosticsSubtitle => 'Runtime bridge and smoothing details';
+
+  @override
+  String get settingsLabel => 'Settings';
+
+  @override
+  String get settingsSubtitle =>
+      'Calibration-ready UI controls and bridge targets';
+
+  @override
+  String get a4ReferenceLabel => 'A4 reference';
+
+  @override
+  String get tuningToleranceSettingLabel => 'Tuning tolerance';
+
+  @override
+  String get sensitivityLabel => 'Sensitivity';
+
+  @override
+  String get sensitivityRelaxedLabel => 'Relaxed';
+
+  @override
+  String get sensitivityBalancedLabel => 'Balanced';
+
+  @override
+  String get sensitivityPreciseLabel => 'Precise';
+
+  @override
+  String get settingsBackendHint => 'For example: pulse, avfoundation, dshow';
+
+  @override
+  String get settingsDeviceHint => 'For example: default, :0, audio=Microphone';
+
+  @override
+  String get mockBridgeOverrideLabel => 'Mock bridge override';
+
+  @override
+  String get mockBridgeOverrideHelp =>
+      'Development toggle stored in settings. Current startup bridge selection is unchanged until relaunch.';
+
+  @override
+  String get bridgeTypeLabel => 'Bridge type';
+
+  @override
+  String get bridgeTypeMock => 'Mock';
+
+  @override
+  String get bridgeTypeNative => 'Native';
+
+  @override
+  String get bridgeTypeDesktop => 'Desktop process';
+
+  @override
   String get bridgeStateLabel => 'Bridge state';
 
   @override
@@ -89,6 +142,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bridgeStderrLabel => 'Recent stderr';
+
+  @override
+  String get pitchStateLabel => 'Pitch state';
+
+  @override
+  String get pitchedLabel => 'Pitched';
+
+  @override
+  String get rawCentsLabel => 'Raw cents';
+
+  @override
+  String get smoothedCentsLabel => 'Smoothed cents';
 
   @override
   String get bridgeStateIdle => 'Idle';
@@ -153,6 +218,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tooHighLabel => 'Too high';
+
+  @override
+  String frequencyValue(String value) {
+    return '$value Hz';
+  }
+
+  @override
+  String centsValue(String value) {
+    return '$value cents';
+  }
 
   @override
   String get unavailableValue => 'Unavailable';

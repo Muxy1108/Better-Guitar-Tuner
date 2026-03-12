@@ -45,18 +45,30 @@ class StatusBadge extends StatelessWidget {
         ),
     };
 
-    return DecoratedBox(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: foreground,
-            fontWeight: FontWeight.w600,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 140),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          child: Text(
+            label,
+            key: ValueKey<String>(label),
+            style: TextStyle(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
