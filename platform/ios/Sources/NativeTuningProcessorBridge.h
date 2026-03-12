@@ -15,6 +15,9 @@ NS_ASSUME_NONNULL_BEGIN
                                   notes:(NSArray<NSString *> *)notes
                                    mode:(NSString *)mode
                       manualStringIndex:(nullable NSNumber *)manualStringIndex
+                           a4ReferenceHz:(double)a4ReferenceHz
+                    tuningToleranceCents:(double)tuningToleranceCents
+                              sensitivity:(NSString *)sensitivity
                                   error:(NSError * _Nullable * _Nullable)error;
 
 - (NSArray<NSDictionary<NSString *, id> *> *)processSamples:(const float *)samples

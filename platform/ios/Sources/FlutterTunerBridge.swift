@@ -4,8 +4,25 @@ import Foundation
 
 public final class FlutterTunerBridge: NSObject {
     private enum Channel {
-        static let methods = "better_guitar_tuner/audio_bridge/methods"
-        static let events = "better_guitar_tuner/audio_bridge/events"
+        static let methods = NativeBridgeContract.methodChannelName
+        static let events = NativeBridgeContract.eventChannelName
+    }
+
+    private enum NativeBridgeContract {
+        static let methodChannelName = "better_guitar_tuner/audio_bridge/methods"
+        static let eventChannelName = "better_guitar_tuner/audio_bridge/events"
+        static let protocolVersion = "stage8.v1"
+
+        static let presetIdKey = "presetId"
+        static let presetNameKey = "presetName"
+        static let instrumentKey = "instrument"
+        static let notesKey = "notes"
+        static let modeKey = "mode"
+        static let manualStringIndexKey = "manualStringIndex"
+        static let a4ReferenceHzKey = "a4ReferenceHz"
+        static let tuningToleranceCentsKey = "tuningToleranceCents"
+        static let sensitivityKey = "sensitivity"
+        static let protocolVersionKey = "protocolVersion"
     }
 
     private let captureBridge = AudioCaptureBridge()
@@ -122,15 +139,27 @@ public final class FlutterTunerBridge: NSObject {
 
     private func applyConfiguration(arguments: Any?) throws {
         guard let arguments = arguments as? [String: Any],
-              let presetId = arguments["presetId"] as? String,
-              let presetName = arguments["presetName"] as? String,
-              let instrument = arguments["instrument"] as? String,
-              let notes = arguments["notes"] as? [String],
-              let mode = arguments["mode"] as? String else {
+              let presetId = arguments[NativeBridgeContract.presetIdKey] as? String,
+              let presetName = arguments[NativeBridgeContract.presetNameKey] as? String,
+              let instrument = arguments[NativeBridgeContract.instrumentKey] as? String,
+              let notes = arguments[NativeBridgeContract.notesKey] as? [String],
+              let mode = arguments[NativeBridgeContract.modeKey] as? String else {
             throw FlutterTunerBridgeError.invalidArguments
         }
 
-        let manualStringIndex = arguments["manualStringIndex"] as? NSNumber
+        let manualStringIndex = arguments[NativeBridgeContract.manualStringIndexKey] as? NSNumber
+        let a4ReferenceHz =
+            (arguments[NativeBridgeContract.a4ReferenceHzKey] as? NSNumber)?.doubleValue ?? 440.0
+        let tuningToleranceCents =
+            (arguments[NativeBridgeContract.tuningToleranceCentsKey] as? NSNumber)?.doubleValue ?? 5.0
+        let sensitivity =
+            arguments[NativeBridgeContract.sensitivityKey] as? String ?? "balanced"
+        let protocolVersion =
+            arguments[NativeBridgeContract.protocolVersionKey] as? String ??
+            NativeBridgeContract.protocolVersion
+        if protocolVersion != NativeBridgeContract.protocolVersion {
+            throw FlutterTunerBridgeError.unsupportedProtocolVersion(protocolVersion)
+        }
         var configurationError: NSError?
         let applied = processor.updateConfiguration(
             withPresetId: presetId,
@@ -139,6 +168,9 @@ public final class FlutterTunerBridge: NSObject {
             notes: notes,
             mode: mode,
             manualStringIndex: manualStringIndex,
+            a4ReferenceHz: a4ReferenceHz,
+            tuningToleranceCents: tuningToleranceCents,
+            sensitivity: sensitivity,
             error: &configurationError
         )
 
@@ -199,11 +231,14 @@ extension FlutterTunerBridge: FlutterStreamHandler {
 
 private enum FlutterTunerBridgeError: LocalizedError {
     case invalidArguments
+    case unsupportedProtocolVersion(String)
 
     var errorDescription: String? {
         switch self {
         case .invalidArguments:
             return "Invalid tuner bridge configuration."
+        case let .unsupportedProtocolVersion(version):
+            return "Unsupported tuner bridge protocol version: \(version)"
         }
     }
 }

@@ -126,3 +126,18 @@ tuning guidance in auto or manual mode.
   tuning is less jumpy under real guitar decay and harmonics.
 - Flutter remains a structured-result consumer. Stage 7 only extends desktop
   command/config plumbing plus presentation-side target/status smoothing.
+
+## Stage 8 Notes
+
+- The desktop subprocess bridge remains shared across Linux, Windows, and
+  macOS, but command construction is now more explicit about platform
+  executable naming, build-layout probing, and backend/device normalization.
+- Windows preparation is still FFmpeg/DirectShow based. The Flutter layer now
+  defaults to `dshow`, normalizes bare device names to `audio=<name>`, and
+  reports startup failures with the attempted command line plus Windows-specific
+  validation hints.
+- The iOS path keeps native capture isolated inside `platform/ios`, but the
+  runtime protocol is now formalized around a versioned method/event contract:
+  `startListening`, `stopListening`, and `updateConfiguration` carry preset and
+  tuning settings into Swift, while the event stream emits realtime tuning
+  frames plus signal diagnostics that stay close to the desktop runner shape.

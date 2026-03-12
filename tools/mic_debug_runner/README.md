@@ -53,6 +53,7 @@ Windows example:
 
 ```bash
 ./build/tools/mic_debug_runner/mic_debug_runner --backend dshow --device "audio=Microphone"
+./build/tools/mic_debug_runner/Debug/mic_debug_runner.exe --backend dshow --device "audio=Microphone"
 ```
 
 Deterministic smoke test without a real microphone:
@@ -125,6 +126,9 @@ Calibration-oriented examples:
 - `alsa`: useful when you want to bypass Pulse/PipeWire layers and target an ALSA device directly. Device naming is host-specific.
 - `avfoundation`: macOS path. Device selection follows FFmpeg's AVFoundation syntax such as `":0"`.
 - `dshow`: Windows path. Device selection uses DirectShow names such as `"audio=Microphone"`. The Flutter desktop bridge now prepares `.exe` naming and common CMake Windows output folders, but this still needs host-side validation.
+- When Flutter desktop settings contain a bare Windows microphone label such as
+  `Microphone Array (USB Audio Device)`, the bridge normalizes it to
+  `audio=Microphone Array (USB Audio Device)` before launching FFmpeg.
 - `lavfi`: deterministic test source for pipeline validation without a real microphone.
 
 ## Pulse-Specific Notes

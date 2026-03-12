@@ -21,6 +21,8 @@ class DesktopRunnerCommand {
 class DesktopRunnerCommandBuilder {
   const DesktopRunnerCommandBuilder();
 
+  static const String _runnerBaseName = 'mic_debug_runner';
+
   DesktopRunnerCommand build({
     required String runnerPath,
     required String presetId,
@@ -32,6 +34,12 @@ class DesktopRunnerCommandBuilder {
     int? manualStringIndex,
     String? workingDirectory,
   }) {
+    final normalizedBackend = _normalizeBackend(backend);
+    final normalizedDevice = _normalizeDevice(
+      backend: normalizedBackend,
+      device: device,
+    );
+
     final arguments = <String>[
       '--tuning',
       presetId,
@@ -40,9 +48,7 @@ class DesktopRunnerCommandBuilder {
       '--preset-file',
       presetFilePath,
       '--backend',
-      backend,
-      '--device',
-      device,
+      normalizedBackend,
       '--a4-reference',
       settings.a4ReferenceHz.toStringAsFixed(1),
       '--tolerance-cents',
@@ -50,6 +56,10 @@ class DesktopRunnerCommandBuilder {
       '--sensitivity',
       settings.sensitivityLevel.name,
     ];
+
+    if (normalizedDevice.isNotEmpty) {
+      arguments.addAll(<String>['--device', normalizedDevice]);
+    }
 
     if (manualStringIndex != null) {
       arguments
@@ -60,32 +70,37 @@ class DesktopRunnerCommandBuilder {
       executablePath: runnerPath,
       arguments: arguments,
       workingDirectory: workingDirectory,
-      backend: backend,
-      device: device,
+      backend: normalizedBackend,
+      device: normalizedDevice,
     );
   }
 
   List<String> candidateRunnerPaths(String repositoryRoot) {
     final root = repositoryRoot;
     final separator = Platform.pathSeparator;
-    final executableName = 'mic_debug_runner$executableSuffix';
-    final basePath =
-        '$root${separator}build${separator}tools${separator}mic_debug_runner';
+    final executableName = '$_runnerBaseName$executableSuffix';
+    final buildPath = '$root${separator}build';
+    final toolPath = '$buildPath${separator}tools$separator$_runnerBaseName';
+    final configNames = <String>['Debug', 'Release', 'RelWithDebInfo'];
+    final candidates = <String>[
+      '$toolPath$separator$executableName',
+      '$buildPath$separator$executableName',
+    ];
 
-    if (Platform.isWindows) {
-      return <String>[
-        '$basePath$separator$executableName',
-        '$basePath${separator}Debug$separator$executableName',
-        '$basePath${separator}Release$separator$executableName',
-        '$basePath${separator}RelWithDebInfo$separator$executableName',
-      ];
+    for (final config in configNames) {
+      candidates.add('$toolPath$separator$config$separator$executableName');
+      candidates.add('$buildPath$separator$config$separator$executableName');
     }
 
-    return <String>[
-      '$basePath$separator$executableName',
-      '$basePath${separator}Debug$separator$executableName',
-      '$basePath${separator}Release$separator$executableName',
-    ];
+    if (Platform.isWindows) {
+      candidates.addAll(<String>[
+        '$buildPath${separator}bin$separator$executableName',
+        '$buildPath${separator}bin${separator}Debug$separator$executableName',
+        '$buildPath${separator}bin${separator}Release$separator$executableName',
+      ]);
+    }
+
+    return candidates.toSet().toList(growable: false);
   }
 
   String get defaultBackend {
@@ -109,4 +124,33 @@ class DesktopRunnerCommandBuilder {
   }
 
   String get executableSuffix => Platform.isWindows ? '.exe' : '';
+
+  String _normalizeBackend(String backend) {
+    final trimmed = backend.trim();
+    if (trimmed.isEmpty) {
+      return defaultBackend;
+    }
+    return trimmed;
+  }
+
+  String _normalizeDevice({
+    required String backend,
+    required String device,
+  }) {
+    final trimmed = device.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+
+    if (backend != 'dshow') {
+      return trimmed;
+    }
+
+    final lower = trimmed.toLowerCase();
+    if (lower.startsWith('audio=') || lower.startsWith('video=')) {
+      return trimmed;
+    }
+
+    return 'audio=$trimmed';
+  }
 }

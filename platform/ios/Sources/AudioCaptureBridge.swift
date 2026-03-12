@@ -7,19 +7,28 @@ public struct AudioCaptureConfiguration {
     public let windowSizeSamples: Int
     public let hopSizeSamples: Int
     public let tapBufferSize: Int
+    public let sessionCategory: AVAudioSession.Category
+    public let sessionMode: AVAudioSession.Mode
+    public let sessionOptions: AVAudioSession.CategoryOptions
 
     public init(
         sampleRateHz: Int = 48_000,
         channelCount: Int = 1,
         windowSizeSamples: Int = 4_096,
         hopSizeSamples: Int = 1_024,
-        tapBufferSize: Int = 1_024
+        tapBufferSize: Int = 1_024,
+        sessionCategory: AVAudioSession.Category = .playAndRecord,
+        sessionMode: AVAudioSession.Mode = .measurement,
+        sessionOptions: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetooth]
     ) {
         self.sampleRateHz = sampleRateHz
         self.channelCount = channelCount
         self.windowSizeSamples = windowSizeSamples
         self.hopSizeSamples = hopSizeSamples
         self.tapBufferSize = tapBufferSize
+        self.sessionCategory = sessionCategory
+        self.sessionMode = sessionMode
+        self.sessionOptions = sessionOptions
     }
 }
 
@@ -55,9 +64,9 @@ public final class AudioCaptureBridge {
         sampleHandler = onSamples
 
         try audioSession.setCategory(
-            .playAndRecord,
-            mode: .measurement,
-            options: [.defaultToSpeaker, .allowBluetooth]
+            configuration.sessionCategory,
+            mode: configuration.sessionMode,
+            options: configuration.sessionOptions
         )
         try audioSession.setPreferredSampleRate(Double(configuration.sampleRateHz))
         try audioSession.setPreferredIOBufferDuration(

@@ -131,6 +131,9 @@ Current behavior:
   non-fatal diagnostics instead of terminating the stream.
 - Native tuning frames are delivered through an event stream as structured
   maps that mirror the shared tuning result shape plus signal metadata
+- Windows desktop preparation keeps the same bridge abstraction but now probes
+  common `.exe` output layouts, defaults desktop FFmpeg capture to `dshow`,
+  and normalizes bare device labels into DirectShow `audio=<name>` strings
 
 ## iOS Bridge Contract
 
@@ -151,8 +154,23 @@ Method channel operations:
 - `stopListening`
 - `updateConfiguration`
 
+Method payload fields:
+
+- `protocolVersion`: current value `stage8.v1`
+- `presetId`
+- `presetName`
+- `instrument`
+- `notes`
+- `mode`
+- `manualStringIndex`
+- `a4ReferenceHz`
+- `tuningToleranceCents`
+- `sensitivity`
+
 Event stream payload fields:
 
+- `protocol_version`
+- `stream_kind`: currently `tuning_frame`
 - `tuning_id`
 - `mode`
 - `target_string_index`
@@ -167,13 +185,20 @@ Event stream payload fields:
 - `pitch_note`
 - `pitch_midi`
 - `signal_state`
+- `signal_rms`
+- `signal_peak`
+- `pitch_yin_score`
+- `analysis_reason`
 - optional `error_message`
 
 Current behavior:
 
 - `AudioCaptureBridge` uses `AVAudioEngine` with a microphone tap and float PCM conversion
 - `NativeTuningProcessorBridge` keeps DSP and tuning evaluation in native code
-- `FlutterTunerBridge` owns the Flutter method/event channel boundary
+- `FlutterTunerBridge` owns the Flutter method/event channel boundary and
+  rejects unsupported protocol versions
+- iOS native tuning now applies the same calibration-facing fields Flutter
+  sends to the desktop runner: A4 reference, tuning tolerance, and sensitivity
 
 ## WAV Debug Runner Contract
 

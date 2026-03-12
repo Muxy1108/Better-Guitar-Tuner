@@ -259,7 +259,7 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       _setDiagnostics(
         _diagnostics.copyWith(
           state: AudioBridgeState.error,
-          lastError: error.toString(),
+          lastError: _formatStartupError(error, launchConfig),
         ),
       );
       rethrow;
@@ -482,7 +482,8 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     }
 
     throw StateError(
-      'mic_debug_runner binary was not found. Build it with '
+      'mic_debug_runner binary was not found. Checked: '
+      '${candidates.join(', ')}. Build it with '
       '`cmake -S . -B build && cmake --build build --target mic_debug_runner` '
       'or set MIC_DEBUG_RUNNER_PATH.',
     );
@@ -528,6 +529,23 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     }
     _diagnostics = diagnostics;
     _diagnosticsController.add(diagnostics);
+  }
+
+  String _formatStartupError(
+    Object error,
+    _RunnerLaunchConfig launchConfig,
+  ) {
+    final command = <String>[
+      launchConfig.command.executablePath,
+      ...launchConfig.command.arguments,
+    ].join(' ');
+    final platformHint = Platform.isWindows
+        ? ' On Windows, confirm that the selected DirectShow backend/device '
+            'matches `ffmpeg -list_devices true -f dshow -i dummy` output and '
+            'that the runner path points to a built `.exe`.'
+        : '';
+    return 'Failed to start mic_debug_runner with `$command`: $error.'
+        '$platformHint';
   }
 }
 

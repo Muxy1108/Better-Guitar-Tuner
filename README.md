@@ -70,6 +70,64 @@ Stage 5B hardens that bridge in a few ways:
 - runner command construction is platform-aware so Linux and Windows executable
   differences stay isolated in one place
 
+Stage 8 extends the release-path preparation:
+
+- Windows runner lookup now checks common `.exe` output layouts used by CMake
+  and Visual Studio generators
+- Windows desktop defaults remain `dshow`, and bare device labels entered in
+  Flutter are normalized to DirectShow-style `audio=<name>` arguments
+- desktop startup errors now include the attempted runner command and a
+  Windows-specific DirectShow validation hint when relevant
+- iOS uses a versioned method/event bridge contract and emits richer native
+  tuning frames that stay closer to the desktop runner payload
+
+## Platform Notes
+
+Linux:
+
+- primary validated desktop path today
+- default desktop backend: `pulse`
+- build and run:
+
+```bash
+cmake -S . -B build
+cmake --build build --target mic_debug_runner
+flutter run -d linux
+```
+
+Windows:
+
+- desktop bridge path is prepared for `mic_debug_runner.exe`, but real device
+  validation still requires a Windows host with `ffmpeg` on `PATH`
+- default desktop backend: `dshow`
+- if a device label is entered as `Microphone Array`, Flutter now passes
+  `audio=Microphone Array` to `ffmpeg`
+- useful DirectShow discovery command on Windows:
+
+```text
+ffmpeg -list_devices true -f dshow -i dummy
+```
+
+- typical build output checked by Flutter includes:
+  `build/tools/mic_debug_runner/mic_debug_runner.exe`
+  `build/tools/mic_debug_runner/Debug/mic_debug_runner.exe`
+  `build/Debug/mic_debug_runner.exe`
+
+iOS:
+
+- native capture path uses `AVAudioEngine` plus the shared C++ DSP/tuning code
+- Flutter talks to native code through:
+  `better_guitar_tuner/audio_bridge/methods`
+  `better_guitar_tuner/audio_bridge/events`
+- build and run from the Flutter app:
+
+```bash
+flutter run -d ios
+```
+
+- release signing, entitlement review, and real hardware latency validation
+  still require Xcode on macOS plus an iPhone/iPad
+
 ## Desktop Calibration Workflow
 
 - Start with `balanced` sensitivity, `A4 = 440.0 Hz`, and tolerance near
@@ -100,5 +158,6 @@ Stage 5B hardens that bridge in a few ways:
 - Linux is the primary validated desktop path today
 - Windows command defaults and executable resolution are prepared in Flutter,
   but real DirectShow device-name validation still needs host-side testing
-- iOS still uses its own native capture path and has not yet adopted the new
-  desktop-only calibration profiles or diagnostics fields
+- iOS now accepts calibration-facing settings and emits richer diagnostics, but
+  it still needs real-device validation for permission flow, audio-session
+  behavior, and sustained realtime performance

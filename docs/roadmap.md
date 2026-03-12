@@ -76,3 +76,18 @@ split that prepares the desktop path for future Windows support.
 Status update: Stage 7 calibration hardening is implemented for the desktop
 runner path with calibration-aware settings plumbing, richer DSP diagnostics,
 auto-target retention, and Flutter-side target/status smoothing updates.
+
+## Stage 8: Windows + iOS Release Path Preparation
+
+- Harden the shared desktop subprocess bridge for Windows executable/layout
+  differences and DirectShow defaults
+- Formalize the iOS Flutter/native runtime protocol so start/stop/config and
+  realtime tuning frames are versioned and explicit
+- Improve platform-specific run/build documentation for Linux, Windows, and iOS
+- Preserve the mock bridge and the existing Linux-first desktop workflow while
+  preparing the release path for host-specific validation
+
+Status update: Stage 8 prepares Windows command building and startup
+diagnostics, aligns the iOS bridge payloads with the desktop tuning frame
+shape, and expands platform notes without changing the core DSP/tuning
+architecture.

@@ -8,6 +8,7 @@ import '../models/tuning_mode.dart';
 import '../models/tuning_preset.dart';
 import '../models/tuning_result.dart';
 import 'audio_bridge_service.dart';
+import 'native_audio_bridge_contract.dart';
 
 class NativeAudioBridgeService implements AudioBridgeService {
   NativeAudioBridgeService({
@@ -17,9 +18,9 @@ class NativeAudioBridgeService implements AudioBridgeService {
         _eventChannel = eventChannel ?? _defaultEventChannel;
 
   static const MethodChannel _defaultMethodChannel =
-      MethodChannel('better_guitar_tuner/audio_bridge/methods');
+      MethodChannel(NativeAudioBridgeContract.methodChannelName);
   static const EventChannel _defaultEventChannel =
-      EventChannel('better_guitar_tuner/audio_bridge/events');
+      EventChannel(NativeAudioBridgeContract.eventChannelName);
 
   final MethodChannel _methodChannel;
   final EventChannel _eventChannel;
@@ -27,8 +28,16 @@ class NativeAudioBridgeService implements AudioBridgeService {
       StreamController<AudioBridgeDiagnostics>.broadcast();
 
   Stream<TuningResultModel>? _tuningResults;
-  AudioBridgeDiagnostics _diagnostics = const AudioBridgeDiagnostics.idle();
+  AudioBridgeDiagnostics _diagnostics = const AudioBridgeDiagnostics(
+    state: AudioBridgeState.idle,
+    backend: 'ios_native',
+    device: 'built_in_microphone',
+  );
   TunerSettings _settings = const TunerSettings();
+  TuningPreset? _currentPreset;
+  TunerMode _currentMode = TunerMode.auto;
+  int? _currentManualStringIndex;
+  bool _isListening = false;
 
   @override
   AudioBridgeKind get bridgeKind => AudioBridgeKind.native;
@@ -52,13 +61,20 @@ class NativeAudioBridgeService implements AudioBridgeService {
       }
 
       return TuningResultModel.fromMap(event);
+    }).handleError((Object error, StackTrace stackTrace) {
+      _setDiagnostics(
+        _diagnostics.copyWith(
+          state: AudioBridgeState.error,
+          lastError: _formatPlatformError(error),
+        ),
+      );
     }).asBroadcastStream();
   }
 
   @override
   Future<AudioPermissionState> getMicrophonePermissionStatus() async {
     final status = await _methodChannel.invokeMethod<String>(
-      'getMicrophonePermissionStatus',
+      NativeAudioBridgeContract.getMicrophonePermissionStatus,
     );
     return _parsePermissionState(status);
   }
@@ -66,7 +82,7 @@ class NativeAudioBridgeService implements AudioBridgeService {
   @override
   Future<AudioPermissionState> requestMicrophonePermission() async {
     final status = await _methodChannel.invokeMethod<String>(
-      'requestMicrophonePermission',
+      NativeAudioBridgeContract.requestMicrophonePermission,
     );
     return _parsePermissionState(status);
   }
@@ -77,33 +93,68 @@ class NativeAudioBridgeService implements AudioBridgeService {
     required TunerMode mode,
     int? manualStringIndex,
   }) async {
+    _currentPreset = preset;
+    _currentMode = mode;
+    _currentManualStringIndex = manualStringIndex;
     _setDiagnostics(
       _diagnostics.copyWith(
         state: AudioBridgeState.starting,
         clearLastError: true,
       ),
     );
-    await _methodChannel.invokeMethod<void>(
-      'startListening',
-      _buildArguments(
-        preset: preset,
-        mode: mode,
-        manualStringIndex: manualStringIndex,
-      ),
-    );
-    _setDiagnostics(
-      _diagnostics.copyWith(
-        state: AudioBridgeState.listening,
-        clearLastError: true,
-      ),
-    );
+    try {
+      await _methodChannel.invokeMethod<void>(
+        NativeAudioBridgeContract.startListening,
+        _buildArguments(
+          preset: preset,
+          mode: mode,
+          manualStringIndex: manualStringIndex,
+        ),
+      );
+      _isListening = true;
+      _setDiagnostics(
+        _diagnostics.copyWith(
+          state: AudioBridgeState.listening,
+          clearLastError: true,
+          backend: 'ios_native',
+          device: 'built_in_microphone',
+        ),
+      );
+    } catch (error) {
+      _isListening = false;
+      _setDiagnostics(
+        _diagnostics.copyWith(
+          state: AudioBridgeState.error,
+          lastError: _formatPlatformError(error),
+        ),
+      );
+      rethrow;
+    }
   }
 
   @override
   Future<void> stopListening() async {
     _setDiagnostics(_diagnostics.copyWith(state: AudioBridgeState.stopping));
-    await _methodChannel.invokeMethod<void>('stopListening');
-    _setDiagnostics(_diagnostics.copyWith(state: AudioBridgeState.idle));
+    try {
+      await _methodChannel.invokeMethod<void>(
+        NativeAudioBridgeContract.stopListening,
+      );
+      _isListening = false;
+      _setDiagnostics(
+        _diagnostics.copyWith(
+          state: AudioBridgeState.idle,
+          clearLastError: true,
+        ),
+      );
+    } catch (error) {
+      _setDiagnostics(
+        _diagnostics.copyWith(
+          state: AudioBridgeState.error,
+          lastError: _formatPlatformError(error),
+        ),
+      );
+      rethrow;
+    }
   }
 
   @override
@@ -111,20 +162,45 @@ class NativeAudioBridgeService implements AudioBridgeService {
     required TuningPreset preset,
     required TunerMode mode,
     int? manualStringIndex,
-  }) {
-    return _methodChannel.invokeMethod<void>(
-      'updateConfiguration',
-      _buildArguments(
-        preset: preset,
-        mode: mode,
-        manualStringIndex: manualStringIndex,
-      ),
-    );
+  }) async {
+    _currentPreset = preset;
+    _currentMode = mode;
+    _currentManualStringIndex = manualStringIndex;
+
+    try {
+      await _methodChannel.invokeMethod<void>(
+        NativeAudioBridgeContract.updateConfiguration,
+        _buildArguments(
+          preset: preset,
+          mode: mode,
+          manualStringIndex: manualStringIndex,
+        ),
+      );
+    } catch (error) {
+      _setDiagnostics(
+        _diagnostics.copyWith(
+          state: AudioBridgeState.error,
+          lastError: _formatPlatformError(error),
+        ),
+      );
+      rethrow;
+    }
   }
 
   @override
   Future<void> updateSettings(TunerSettings settings) async {
     _settings = settings;
+    final preset = _currentPreset;
+    if (!_isListening || preset == null) {
+      return;
+    }
+
+    await updateConfiguration(
+      preset: preset,
+      mode: _currentMode,
+      manualStringIndex:
+          _currentMode == TunerMode.manual ? _currentManualStringIndex : null,
+    );
   }
 
   @override
@@ -138,12 +214,18 @@ class NativeAudioBridgeService implements AudioBridgeService {
     int? manualStringIndex,
   }) {
     return <String, Object?>{
-      'presetId': preset.id,
-      'presetName': preset.name,
-      'instrument': preset.instrument,
-      'notes': preset.notes,
-      'mode': mode.name,
-      'manualStringIndex': manualStringIndex,
+      NativeAudioBridgeContract.presetIdKey: preset.id,
+      NativeAudioBridgeContract.presetNameKey: preset.name,
+      NativeAudioBridgeContract.instrumentKey: preset.instrument,
+      NativeAudioBridgeContract.notesKey: preset.notes,
+      NativeAudioBridgeContract.modeKey: mode.name,
+      NativeAudioBridgeContract.manualStringIndexKey: manualStringIndex,
+      NativeAudioBridgeContract.a4ReferenceHzKey: _settings.a4ReferenceHz,
+      NativeAudioBridgeContract.tuningToleranceCentsKey:
+          _settings.tuningToleranceCents,
+      NativeAudioBridgeContract.sensitivityKey: _settings.sensitivityLevel.name,
+      NativeAudioBridgeContract.protocolVersionKey:
+          NativeAudioBridgeContract.protocolVersion,
     };
   }
 
@@ -162,5 +244,12 @@ class NativeAudioBridgeService implements AudioBridgeService {
   void _setDiagnostics(AudioBridgeDiagnostics diagnostics) {
     _diagnostics = diagnostics;
     _diagnosticsController.add(diagnostics);
+  }
+
+  String _formatPlatformError(Object error) {
+    if (error is PlatformException) {
+      return error.message ?? error.code;
+    }
+    return error.toString();
   }
 }
