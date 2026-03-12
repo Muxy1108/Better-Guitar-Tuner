@@ -39,6 +39,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nativeBridgeRunning => '当前使用原生音频桥接服务输出实时调音数据。';
 
   @override
+  String get desktopBridgeRunning => '当前使用桌面进程桥接服务输出实时调音数据。';
+
+  @override
   String get listeningStopped => '输入流已停止。';
 
   @override

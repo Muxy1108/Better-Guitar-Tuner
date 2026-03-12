@@ -214,6 +214,9 @@ class TunerViewModel extends ChangeNotifier {
 
   void _handleBridgeError(Object error) {
     _isListening = false;
+    _pendingSignalResult = null;
+    _pendingSignalSince = null;
+    _latestResult = _buildIdleResult();
     _listeningErrorMessage = _formatError(error);
     notifyListeners();
   }

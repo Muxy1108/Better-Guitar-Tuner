@@ -34,6 +34,8 @@ constexpr float kMaximumAbsCentsForStability = 80.0f;
 constexpr auto kMinimumPrintInterval = std::chrono::milliseconds(350);
 constexpr auto kRepeatPrintInterval = std::chrono::milliseconds(1'200);
 constexpr std::size_t kReadChunkSamples = 512;
+constexpr float kWeakSignalConfidenceThreshold = 0.75f;
+constexpr float kWeakSignalCentsThreshold = 80.0f;
 #ifdef MIC_DEBUG_RUNNER_DEFAULT_PRESET_FILE
 constexpr char kDefaultPresetFilePath[] = MIC_DEBUG_RUNNER_DEFAULT_PRESET_FILE;
 #else
@@ -99,6 +101,40 @@ std::string_view ToString(CliMode mode) {
   }
 
   return "auto";
+}
+
+std::string EscapeJsonString(std::string_view value) {
+  std::string escaped;
+  escaped.reserve(value.size());
+  for (char ch : value) {
+    switch (ch) {
+      case '\\':
+        escaped.append("\\\\");
+        break;
+      case '"':
+        escaped.append("\\\"");
+        break;
+      case '\b':
+        escaped.append("\\b");
+        break;
+      case '\f':
+        escaped.append("\\f");
+        break;
+      case '\n':
+        escaped.append("\\n");
+        break;
+      case '\r':
+        escaped.append("\\r");
+        break;
+      case '\t':
+        escaped.append("\\t");
+        break;
+      default:
+        escaped.push_back(ch);
+        break;
+    }
+  }
+  return escaped;
 }
 
 void PrintUsage(std::ostream& stream) {
@@ -298,6 +334,34 @@ bool IsMeaningfulResult(const dsp_core::PitchResult& result) {
   return true;
 }
 
+bool IsWeakSignal(const dsp_core::PitchResult& result) {
+  if (!result.has_pitch) {
+    return false;
+  }
+
+  if (result.confidence < kWeakSignalConfidenceThreshold) {
+    return true;
+  }
+
+  if (result.nearest_midi < 0 || result.nearest_note.empty()) {
+    return true;
+  }
+
+  return std::abs(result.cents_offset) > kWeakSignalCentsThreshold;
+}
+
+std::string_view SignalStateString(const dsp_core::PitchResult& result) {
+  if (!result.has_pitch) {
+    return "no_pitch";
+  }
+
+  if (IsWeakSignal(result)) {
+    return "weak_signal";
+  }
+
+  return "pitched";
+}
+
 bool ShouldPrint(const dsp_core::PitchResult& result, StablePitchState* state,
                  const Options& options, Clock::time_point now) {
   if (!IsMeaningfulResult(result)) {
@@ -343,21 +407,31 @@ bool ShouldPrint(const dsp_core::PitchResult& result, StablePitchState* state,
   return true;
 }
 
-void PrintResult(const tuning_engine::TuningResult& result) {
+void PrintResult(const dsp_core::PitchResult& pitch_result,
+                 const tuning_engine::TuningResult& result) {
   std::cout << std::fixed << std::setprecision(2)
             << "{"
-            << "\"tuning_id\":\"" << result.tuning_id << "\","
+            << "\"tuning_id\":\"" << EscapeJsonString(result.tuning_id) << "\","
             << "\"mode\":\"" << tuning_engine::to_string(result.mode) << "\","
             << "\"target_string_index\":" << result.target_string_index << ","
-            << "\"target_note\":\"" << result.target_note << "\","
+            << "\"target_note\":\"" << EscapeJsonString(result.target_note) << "\","
             << "\"target_frequency_hz\":" << result.target_frequency_hz << ","
-            << "\"detected_frequency_hz\":" << result.detected_frequency_hz << ","
+            << "\"detected_frequency_hz\":" << pitch_result.detected_frequency_hz
+            << ","
             << "\"cents_offset\":" << result.cents_offset << ","
             << "\"status\":\"" << tuning_engine::to_string(result.status) << "\","
             << "\"has_detected_pitch\":"
-            << (result.has_detected_pitch ? "true" : "false");
+            << (result.has_detected_pitch ? "true" : "false") << ","
+            << "\"has_target\":" << (result.has_target ? "true" : "false")
+            << ","
+            << "\"pitch_confidence\":" << pitch_result.confidence << ","
+            << "\"pitch_note\":\"" << EscapeJsonString(pitch_result.nearest_note)
+            << "\","
+            << "\"pitch_midi\":" << pitch_result.nearest_midi << ","
+            << "\"signal_state\":\"" << SignalStateString(pitch_result) << "\"";
   if (!result.error_message.empty()) {
-    std::cout << ",\"error_message\":\"" << result.error_message << "\"";
+    std::cout << ",\"error_message\":\""
+              << EscapeJsonString(result.error_message) << "\"";
   }
   std::cout << "}\n";
 }
@@ -466,7 +540,7 @@ int main(int argc, char** argv) {
               options.mode == CliMode::kAuto ? tuning_engine::TuningMode::kAuto
                                              : tuning_engine::TuningMode::kManual,
               options.mode == CliMode::kManual ? options.string_index : -1);
-      PrintResult(tuning_result);
+      PrintResult(stable_state.last_candidate, tuning_result);
     }
   }
 

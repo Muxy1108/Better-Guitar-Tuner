@@ -20,8 +20,9 @@ Responsibility: application shell, screens, state management, and presentation o
 Current state: Stage 4 MVP UI architecture is implemented with an app shell,
 feature-based tuner module, `ChangeNotifier` view model, localization
 scaffolding, asset-backed preset loading, a native iOS audio bridge for live
-capture, and a mock audio bridge service that remains available for testing and
-non-iOS development.
+capture, a desktop subprocess bridge that streams `mic_debug_runner` JSON on
+desktop platforms, and a mock audio bridge service that remains available for
+testing and fallback behavior.
 
 ### `modules/dsp_core`
 
@@ -81,6 +82,8 @@ tuning guidance in auto or manual mode.
    produces target-string guidance.
 8. The platform bridge emits structured tuning-result payloads on an event
    stream through the Flutter-side `AudioBridgeService` abstraction.
+   On desktop, this bridge is a managed subprocess wrapper around
+   `tools/mic_debug_runner`.
 9. The Flutter view model applies lightweight smoothing and state hysteresis,
    then renders the current note, target string, and tuning guidance.
 10. The WAV debug runner reuses the same DSP core for offline verification.
@@ -91,7 +94,10 @@ tuning guidance in auto or manual mode.
 - The Flutter UI is intentionally simple and functional, with cards, control
   rows, and a cents meter widget rather than final visual polish.
 - The Flutter app defaults to the native iOS bridge on iPhone/iPad builds and
-  retains the mock bridge as a fallback for testing and non-iOS development.
+  retains the mock bridge as a fallback for testing and unsupported platforms.
+- Linux desktop development can now use a subprocess-backed bridge that starts
+  `mic_debug_runner`, parses one JSON object per stdout line, and restarts the
+  process when the active preset or target mode changes.
 - The native bridge uses method calls for permission/start/stop/configuration
   and an event stream for continuous tuning frames.
 - Flutter owns presentation-state smoothing, permission/error display, and

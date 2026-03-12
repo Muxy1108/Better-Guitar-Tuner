@@ -10,6 +10,7 @@
   "stopListeningLabel": "Stop listening",
   "mockBridgeRunning": "Mock audio bridge is streaming development data.",
   "nativeBridgeRunning": "Native audio bridge is streaming live tuning data.",
+  "desktopBridgeRunning": "Desktop process bridge is streaming live tuning data.",
   "listeningStopped": "Input stream is stopped.",
   "microphonePermissionDeniedTitle": "Microphone permission required",
   "microphonePermissionDeniedMessage": "Microphone access is denied. Enable it in iOS Settings to tune with live input.",

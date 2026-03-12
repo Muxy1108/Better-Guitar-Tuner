@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'Native audio bridge is streaming live tuning data.'**
   String get nativeBridgeRunning;
 
+  /// No description provided for @desktopBridgeRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop process bridge is streaming live tuning data.'**
+  String get desktopBridgeRunning;
+
   /// No description provided for @listeningStopped.
   ///
   /// In en, this message translates to:

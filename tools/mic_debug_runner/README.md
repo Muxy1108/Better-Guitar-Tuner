@@ -89,7 +89,7 @@ Useful flags:
 Example output:
 
 ```json
-{"tuning_id":"standard","mode":"auto","target_string_index":1,"target_note":"A2","target_frequency_hz":110.00,"detected_frequency_hz":110.14,"cents_offset":2.18,"status":"in_tune","has_detected_pitch":true}
+{"tuning_id":"standard","mode":"auto","target_string_index":1,"target_note":"A2","target_frequency_hz":110.00,"detected_frequency_hz":110.14,"cents_offset":2.18,"status":"in_tune","has_detected_pitch":true,"has_target":true,"pitch_confidence":0.94,"pitch_note":"A2","pitch_midi":45,"signal_state":"pitched"}
 ```
 
 ## Known Limitations
@@ -103,6 +103,8 @@ Example output:
 - only stable frames are printed; transient or weak detections are intentionally suppressed
 - manual mode still uses the same pitch-detection stability gate before emitting guidance
 - stdout is structured but minimal; there is no curses UI or waveform visualization
+- stdout is reserved for machine-readable NDJSON output; startup and runtime
+  logs stay on stderr so a GUI bridge can parse stdout safely
 - if `ffmpeg` is missing or the selected input backend/device is wrong, capture will fail at runtime
 
 ## Backend Notes

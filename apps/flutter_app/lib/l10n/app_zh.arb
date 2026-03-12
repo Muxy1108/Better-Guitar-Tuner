@@ -10,6 +10,7 @@
   "stopListeningLabel": "停止监听",
   "mockBridgeRunning": "当前使用模拟音频桥接服务输出开发数据。",
   "nativeBridgeRunning": "当前使用原生音频桥接服务输出实时调音数据。",
+  "desktopBridgeRunning": "当前使用桌面进程桥接服务输出实时调音数据。",
   "listeningStopped": "输入流已停止。",
   "microphonePermissionDeniedTitle": "需要麦克风权限",
   "microphonePermissionDeniedMessage": "麦克风访问已被拒绝。请在 iOS 设置中启用权限后再进行实时调音。",

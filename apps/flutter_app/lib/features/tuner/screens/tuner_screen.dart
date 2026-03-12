@@ -308,9 +308,14 @@ String _listeningSummary(AppLocalizations l10n, TunerViewModel viewModel) {
     return l10n.listeningStopped;
   }
 
-  return viewModel.bridgeKind == AudioBridgeKind.native
-      ? l10n.nativeBridgeRunning
-      : l10n.mockBridgeRunning;
+  switch (viewModel.bridgeKind) {
+    case AudioBridgeKind.native:
+      return l10n.nativeBridgeRunning;
+    case AudioBridgeKind.desktopProcess:
+      return l10n.desktopBridgeRunning;
+    case AudioBridgeKind.mock:
+      return l10n.mockBridgeRunning;
+  }
 }
 
 String _signalTitle(AppLocalizations l10n, TuningSignalState signalState) {
@@ -329,7 +334,7 @@ String _signalMessage(AppLocalizations l10n, TuningSignalState signalState) {
     case TuningSignalState.weakSignal:
       return l10n.weakSignalMessage;
     case TuningSignalState.pitched:
-      return l10n.nativeBridgeRunning;
+      return l10n.listeningLabel;
     case TuningSignalState.noPitch:
       return l10n.noPitchMessage;
   }

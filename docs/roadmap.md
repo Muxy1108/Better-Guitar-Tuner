@@ -53,3 +53,6 @@ Status: Stage 5 realtime iOS bridge is implemented with native microphone
 capture, method/event channel integration, Flutter-side permission and bridge
 error handling, weak-signal/no-pitch UX, and mock bridge fallback. Calibration,
 sensitivity controls, and persisted settings remain for the next phase.
+
+Status update: Stage 5A adds a desktop subprocess bridge for Linux development
+that reuses `mic_debug_runner` without changing the Flutter-side architecture.

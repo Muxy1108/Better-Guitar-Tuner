@@ -44,4 +44,14 @@ structured tuning guidance:
 ./build/tools/mic_debug_runner/mic_debug_runner --tuning standard --mode manual --string-index 5
 ```
 
-The Flutter and iOS layers are scaffolds and require their respective toolchains to be initialized further before shipping functionality.
+The Flutter app now selects its audio bridge by platform:
+
+- `USE_MOCK_AUDIO_BRIDGE=true`: always use the mock bridge
+- iOS: use `NativeAudioBridgeService`
+- Linux, Windows, macOS desktop: use `DesktopProcessAudioBridgeService`
+- unsupported targets: fall back to the mock bridge
+
+The desktop bridge launches the locally built `mic_debug_runner`, passes the
+active tuning preset and mode, and consumes one JSON result per stdout line.
+Set `MIC_DEBUG_RUNNER_PATH` to override the runner binary location and
+`MIC_DEBUG_RUNNER_PRESET_FILE` to override the preset JSON path.

@@ -92,6 +92,8 @@ Flutter-side bridge:
   streaming structured tuning results into Flutter
 - `NativeAudioBridgeService`: production Flutter implementation backed by
   platform channels on iOS
+- `DesktopProcessAudioBridgeService`: desktop Flutter implementation backed by
+  a local `mic_debug_runner` subprocess and NDJSON stdout stream
 - `MockAudioBridgeService`: deterministic development fallback that preserves
   the Stage 4 UI contract
 
@@ -102,6 +104,9 @@ Current behavior:
   style UI development
 - `NativeAudioBridgeService` exposes microphone permission, start/stop, and
   configuration updates through a method channel
+- `DesktopProcessAudioBridgeService` resolves the local runner binary, passes
+  preset/mode/manual arguments, restarts on configuration changes, and emits
+  parsed JSON tuning frames into the same Flutter view-model contract
 - Native tuning frames are delivered through an event stream as structured
   maps that mirror the shared tuning result shape plus signal metadata
 
@@ -182,5 +187,7 @@ Current behavior:
 - Feeds sliding windows into `dsp_core::detect_pitch(...)`
 - Loads tuning presets from the bundled JSON file by default, or from an explicit preset path
 - Resolves the selected tuning preset by id before capture starts
-- Prints structured tuning guidance only for stable, meaningful detections
+- Prints exactly one JSON object per stdout line for stable, meaningful
+  detections and keeps human-readable logs on stderr
+- Includes tuning result fields plus signal metadata needed by the Flutter UI
 - Remains the closest desktop reference path for the Stage 5 iOS bridge flow

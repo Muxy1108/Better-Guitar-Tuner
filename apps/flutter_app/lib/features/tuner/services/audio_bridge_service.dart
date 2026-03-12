@@ -5,6 +5,7 @@ import '../models/tuning_result.dart';
 enum AudioBridgeKind {
   mock,
   native,
+  desktopProcess,
 }
 
 enum AudioPermissionState {

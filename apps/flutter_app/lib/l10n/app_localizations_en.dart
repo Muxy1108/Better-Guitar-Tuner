@@ -41,6 +41,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Native audio bridge is streaming live tuning data.';
 
   @override
+  String get desktopBridgeRunning =>
+      'Desktop process bridge is streaming live tuning data.';
+
+  @override
   String get listeningStopped => 'Input stream is stopped.';
 
   @override
