@@ -84,12 +84,13 @@ Flutter-side models:
 Flutter-side state:
 
 - `TunerViewModel`: owns preset selection, auto/manual mode, manual string
-  target, listening state, and the latest tuning reading
+  target, bridge diagnostics/settings, listening state, and the latest tuning
+  reading
 
 Flutter-side bridge:
 
 - `AudioBridgeService`: abstraction for start/stop/configuration updates and
-  streaming structured tuning results into Flutter
+  streaming structured tuning results plus bridge diagnostics into Flutter
 - `NativeAudioBridgeService`: production Flutter implementation backed by
   platform channels on iOS
 - `DesktopProcessAudioBridgeService`: desktop Flutter implementation backed by
@@ -105,8 +106,15 @@ Current behavior:
 - `NativeAudioBridgeService` exposes microphone permission, start/stop, and
   configuration updates through a method channel
 - `DesktopProcessAudioBridgeService` resolves the local runner binary, passes
-  preset/mode/manual arguments, restarts on configuration changes, and emits
-  parsed JSON tuning frames into the same Flutter view-model contract
+  preset/mode/manual arguments, keeps a platform-aware runner command builder,
+  restarts on configuration or backend/device changes, and emits parsed JSON
+  tuning frames into the same Flutter view-model contract
+- Desktop bridge diagnostics expose `idle`, `starting`, `listening`,
+  `stopping`, and `error` states plus the last bridge error, last process exit
+  code, backend/device, runner path, and a small stderr tail
+- Desktop stdout is treated as NDJSON only: one JSON object per line. Stderr
+  stays human-readable and separate. Malformed stdout lines are recorded as
+  non-fatal diagnostics instead of terminating the stream.
 - Native tuning frames are delivered through an event stream as structured
   maps that mirror the shared tuning result shape plus signal metadata
 
@@ -190,4 +198,6 @@ Current behavior:
 - Prints exactly one JSON object per stdout line for stable, meaningful
   detections and keeps human-readable logs on stderr
 - Includes tuning result fields plus signal metadata needed by the Flutter UI
+- Stdout is reserved for one JSON object per line so GUI clients can parse it
+  incrementally; logs and startup failures should go to stderr
 - Remains the closest desktop reference path for the Stage 5 iOS bridge flow

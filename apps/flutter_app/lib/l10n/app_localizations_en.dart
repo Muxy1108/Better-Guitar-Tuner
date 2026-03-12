@@ -48,6 +48,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get listeningStopped => 'Input stream is stopped.';
 
   @override
+  String get listeningPreparing =>
+      'Starting the audio bridge and waiting for the first stable frames.';
+
+  @override
+  String get listeningStopping => 'Stopping the audio bridge.';
+
+  @override
   String get microphonePermissionDeniedTitle =>
       'Microphone permission required';
 
@@ -61,6 +68,42 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get listeningFailureMessage =>
       'The audio bridge could not start or continue listening.';
+
+  @override
+  String get bridgeDiagnosticsLabel => 'Bridge diagnostics';
+
+  @override
+  String get bridgeStateLabel => 'Bridge state';
+
+  @override
+  String get bridgeBackendLabel => 'Backend';
+
+  @override
+  String get bridgeDeviceLabel => 'Device';
+
+  @override
+  String get bridgeExitCodeLabel => 'Last exit code';
+
+  @override
+  String get bridgeLastErrorLabel => 'Last bridge error';
+
+  @override
+  String get bridgeStderrLabel => 'Recent stderr';
+
+  @override
+  String get bridgeStateIdle => 'Idle';
+
+  @override
+  String get bridgeStateStarting => 'Starting';
+
+  @override
+  String get bridgeStateListening => 'Listening';
+
+  @override
+  String get bridgeStateStopping => 'Stopping';
+
+  @override
+  String get bridgeStateError => 'Error';
 
   @override
   String get tunerReadingLabel => 'Current reading';
@@ -88,11 +131,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'No clear note is detected yet. Pluck a string closer to the microphone.';
 
   @override
+  String get noPitchListeningMessage =>
+      'Listening for a stable note. Play one string clearly and let it ring briefly.';
+
+  @override
   String get weakSignalLabel => 'Weak signal';
 
   @override
   String get weakSignalMessage =>
       'Pitch input is unstable. Hold the note longer or reduce background noise.';
+
+  @override
+  String get weakSignalDetailedMessage =>
+      'Pitch is present but unstable. Hold the note longer, move closer to the mic, or reduce background noise.';
 
   @override
   String get tooLowLabel => 'Too low';

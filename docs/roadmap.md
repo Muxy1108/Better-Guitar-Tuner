@@ -56,3 +56,8 @@ sensitivity controls, and persisted settings remain for the next phase.
 
 Status update: Stage 5A adds a desktop subprocess bridge for Linux development
 that reuses `mic_debug_runner` without changing the Flutter-side architecture.
+
+Status update: Stage 5B hardens the desktop subprocess bridge with lifecycle
+state, non-fatal stdout parsing, stderr diagnostics, lightweight settings
+plumbing, view-model smoothing/hysteresis improvements, and a command-builder
+split that prepares the desktop path for future Windows support.

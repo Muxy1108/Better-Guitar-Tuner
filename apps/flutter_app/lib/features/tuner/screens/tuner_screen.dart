@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../models/audio_bridge_diagnostics.dart';
 import '../models/tuning_mode.dart';
 import '../models/tuning_result.dart';
 import '../services/audio_bridge_service.dart';
@@ -25,6 +26,7 @@ class TunerScreen extends StatelessWidget {
       builder: (context, _) {
         final preset = viewModel.selectedPreset;
         final result = viewModel.latestResult;
+        final diagnostics = viewModel.bridgeDiagnostics;
 
         return Scaffold(
           appBar: AppBar(
@@ -180,6 +182,8 @@ class TunerScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      _BridgeDiagnosticsCard(viewModel: viewModel),
+                      const SizedBox(height: 12),
                       _ResultSummaryCard(result: result),
                       if (viewModel.isListening &&
                           result.signalState != TuningSignalState.pitched)
@@ -187,7 +191,11 @@ class TunerScreen extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 12),
                           child: _StateCard(
                             title: _signalTitle(l10n, result.signalState),
-                            message: _signalMessage(l10n, result.signalState),
+                            message: _signalMessage(
+                              l10n,
+                              result.signalState,
+                              diagnostics.state,
+                            ),
                           ),
                         ),
                       const SizedBox(height: 12),
@@ -214,6 +222,67 @@ class TunerScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _BridgeDiagnosticsCard extends StatelessWidget {
+  const _BridgeDiagnosticsCard({required this.viewModel});
+
+  final TunerViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final diagnostics = viewModel.bridgeDiagnostics;
+    final settings = viewModel.settings;
+
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.bridgeDiagnosticsLabel,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _MetricTile(
+                label: l10n.bridgeStateLabel,
+                value: _bridgeStateLabel(l10n, diagnostics.state),
+              ),
+              _MetricTile(
+                label: l10n.bridgeBackendLabel,
+                value: diagnostics.backend ?? settings.backend ?? '--',
+              ),
+              _MetricTile(
+                label: l10n.bridgeDeviceLabel,
+                value: diagnostics.device ?? settings.device ?? '--',
+              ),
+              _MetricTile(
+                label: l10n.bridgeExitCodeLabel,
+                value: diagnostics.lastProcessExitCode?.toString() ?? '--',
+              ),
+            ],
+          ),
+          if (diagnostics.lastError != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${l10n.bridgeLastErrorLabel}: ${diagnostics.lastError}',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          if (diagnostics.stderrTail.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${l10n.bridgeStderrLabel}: ${diagnostics.stderrTail.join(' | ')}',
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -300,21 +369,24 @@ String _listeningSummary(AppLocalizations l10n, TunerViewModel viewModel) {
     return l10n.microphonePermissionDeniedMessage;
   }
 
-  if (viewModel.listeningErrorMessage != null) {
-    return l10n.listeningFailureMessage;
-  }
-
-  if (!viewModel.isListening) {
-    return l10n.listeningStopped;
-  }
-
-  switch (viewModel.bridgeKind) {
-    case AudioBridgeKind.native:
-      return l10n.nativeBridgeRunning;
-    case AudioBridgeKind.desktopProcess:
-      return l10n.desktopBridgeRunning;
-    case AudioBridgeKind.mock:
-      return l10n.mockBridgeRunning;
+  switch (viewModel.bridgeDiagnostics.state) {
+    case AudioBridgeState.starting:
+      return l10n.listeningPreparing;
+    case AudioBridgeState.stopping:
+      return l10n.listeningStopping;
+    case AudioBridgeState.error:
+      return viewModel.listeningErrorMessage ?? l10n.listeningFailureMessage;
+    case AudioBridgeState.idle:
+      return l10n.listeningStopped;
+    case AudioBridgeState.listening:
+      switch (viewModel.bridgeKind) {
+        case AudioBridgeKind.native:
+          return l10n.nativeBridgeRunning;
+        case AudioBridgeKind.desktopProcess:
+          return l10n.desktopBridgeRunning;
+        case AudioBridgeKind.mock:
+          return l10n.mockBridgeRunning;
+      }
   }
 }
 
@@ -329,14 +401,39 @@ String _signalTitle(AppLocalizations l10n, TuningSignalState signalState) {
   }
 }
 
-String _signalMessage(AppLocalizations l10n, TuningSignalState signalState) {
+String _signalMessage(
+  AppLocalizations l10n,
+  TuningSignalState signalState,
+  AudioBridgeState bridgeState,
+) {
   switch (signalState) {
     case TuningSignalState.weakSignal:
-      return l10n.weakSignalMessage;
+      return l10n.weakSignalDetailedMessage;
     case TuningSignalState.pitched:
       return l10n.listeningLabel;
     case TuningSignalState.noPitch:
-      return l10n.noPitchMessage;
+      if (bridgeState == AudioBridgeState.starting) {
+        return l10n.listeningPreparing;
+      }
+      return l10n.noPitchListeningMessage;
+  }
+}
+
+String _bridgeStateLabel(
+  AppLocalizations l10n,
+  AudioBridgeState state,
+) {
+  switch (state) {
+    case AudioBridgeState.idle:
+      return l10n.bridgeStateIdle;
+    case AudioBridgeState.starting:
+      return l10n.bridgeStateStarting;
+    case AudioBridgeState.listening:
+      return l10n.bridgeStateListening;
+    case AudioBridgeState.stopping:
+      return l10n.bridgeStateStopping;
+    case AudioBridgeState.error:
+      return l10n.bridgeStateError;
   }
 }
 

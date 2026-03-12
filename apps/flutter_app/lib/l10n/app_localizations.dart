@@ -170,6 +170,18 @@ abstract class AppLocalizations {
   /// **'Input stream is stopped.'**
   String get listeningStopped;
 
+  /// No description provided for @listeningPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the audio bridge and waiting for the first stable frames.'**
+  String get listeningPreparing;
+
+  /// No description provided for @listeningStopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping the audio bridge.'**
+  String get listeningStopping;
+
   /// No description provided for @microphonePermissionDeniedTitle.
   ///
   /// In en, this message translates to:
@@ -193,6 +205,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The audio bridge could not start or continue listening.'**
   String get listeningFailureMessage;
+
+  /// No description provided for @bridgeDiagnosticsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge diagnostics'**
+  String get bridgeDiagnosticsLabel;
+
+  /// No description provided for @bridgeStateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge state'**
+  String get bridgeStateLabel;
+
+  /// No description provided for @bridgeBackendLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Backend'**
+  String get bridgeBackendLabel;
+
+  /// No description provided for @bridgeDeviceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get bridgeDeviceLabel;
+
+  /// No description provided for @bridgeExitCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last exit code'**
+  String get bridgeExitCodeLabel;
+
+  /// No description provided for @bridgeLastErrorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last bridge error'**
+  String get bridgeLastErrorLabel;
+
+  /// No description provided for @bridgeStderrLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent stderr'**
+  String get bridgeStderrLabel;
+
+  /// No description provided for @bridgeStateIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get bridgeStateIdle;
+
+  /// No description provided for @bridgeStateStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get bridgeStateStarting;
+
+  /// No description provided for @bridgeStateListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get bridgeStateListening;
+
+  /// No description provided for @bridgeStateStopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping'**
+  String get bridgeStateStopping;
+
+  /// No description provided for @bridgeStateError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get bridgeStateError;
 
   /// No description provided for @tunerReadingLabel.
   ///
@@ -242,6 +326,12 @@ abstract class AppLocalizations {
   /// **'No clear note is detected yet. Pluck a string closer to the microphone.'**
   String get noPitchMessage;
 
+  /// No description provided for @noPitchListeningMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for a stable note. Play one string clearly and let it ring briefly.'**
+  String get noPitchListeningMessage;
+
   /// No description provided for @weakSignalLabel.
   ///
   /// In en, this message translates to:
@@ -253,6 +343,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pitch input is unstable. Hold the note longer or reduce background noise.'**
   String get weakSignalMessage;
+
+  /// No description provided for @weakSignalDetailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pitch is present but unstable. Hold the note longer, move closer to the mic, or reduce background noise.'**
+  String get weakSignalDetailedMessage;
 
   /// No description provided for @tooLowLabel.
   ///

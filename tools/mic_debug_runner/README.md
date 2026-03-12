@@ -105,6 +105,8 @@ Example output:
 - stdout is structured but minimal; there is no curses UI or waveform visualization
 - stdout is reserved for machine-readable NDJSON output; startup and runtime
   logs stay on stderr so a GUI bridge can parse stdout safely
+- GUI clients should expect one complete JSON object per stdout line and should
+  tolerate stderr activity independently from the realtime data stream
 - if `ffmpeg` is missing or the selected input backend/device is wrong, capture will fail at runtime
 
 ## Backend Notes
@@ -112,7 +114,7 @@ Example output:
 - `pulse`: best default for Linux desktop debugging. The runner requests explicit mono/sample-rate capture settings and applies `aresample=async=1:first_pts=0` so FFmpeg writes a cleaner continuous raw stream to stdout.
 - `alsa`: useful when you want to bypass Pulse/PipeWire layers and target an ALSA device directly. Device naming is host-specific.
 - `avfoundation`: macOS path. Device selection follows FFmpeg's AVFoundation syntax such as `":0"`.
-- `dshow`: Windows path. Device selection uses DirectShow names such as `"audio=Microphone"`.
+- `dshow`: Windows path. Device selection uses DirectShow names such as `"audio=Microphone"`. The Flutter desktop bridge now prepares `.exe` naming and common CMake Windows output folders, but this still needs host-side validation.
 - `lavfi`: deterministic test source for pipeline validation without a real microphone.
 
 ## Pulse-Specific Notes

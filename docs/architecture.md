@@ -21,8 +21,8 @@ Current state: Stage 4 MVP UI architecture is implemented with an app shell,
 feature-based tuner module, `ChangeNotifier` view model, localization
 scaffolding, asset-backed preset loading, a native iOS audio bridge for live
 capture, a desktop subprocess bridge that streams `mic_debug_runner` JSON on
-desktop platforms, and a mock audio bridge service that remains available for
-testing and fallback behavior.
+desktop platforms, bridge diagnostics/settings models, and a mock audio bridge
+service that remains available for testing and fallback behavior.
 
 ### `modules/dsp_core`
 
@@ -96,11 +96,18 @@ tuning guidance in auto or manual mode.
 - The Flutter app defaults to the native iOS bridge on iPhone/iPad builds and
   retains the mock bridge as a fallback for testing and unsupported platforms.
 - Linux desktop development can now use a subprocess-backed bridge that starts
-  `mic_debug_runner`, parses one JSON object per stdout line, and restarts the
-  process when the active preset or target mode changes.
+  `mic_debug_runner`, parses one JSON object per stdout line, keeps stderr
+  logs separate, exposes bridge lifecycle state/last exit diagnostics, and
+  restarts the process when the active preset, target mode, or desktop
+  backend/device changes.
+- The desktop bridge now treats malformed stdout lines as non-fatal diagnostic
+  events so a temporary parse issue does not break the realtime stream.
+- Desktop command construction is isolated behind a platform-aware builder so
+  Linux and future Windows executable/layout differences stay out of the
+  Flutter view model.
 - The native bridge uses method calls for permission/start/stop/configuration
   and an event stream for continuous tuning frames.
 - Flutter owns presentation-state smoothing, permission/error display, and
-  no-pitch or weak-signal UX handling; tuning decisions remain in
-  `tuning_engine`.
+  no-pitch or weak-signal UX handling plus lightweight status hysteresis;
+  tuning decisions remain in `tuning_engine`.
 - No desktop GUI exists; the current desktop validation path remains CLI-only.

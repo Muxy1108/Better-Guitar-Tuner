@@ -8,6 +8,7 @@ import 'features/tuner/services/desktop_process_audio_bridge_service.dart';
 import 'features/tuner/services/mock_audio_bridge_service.dart';
 import 'features/tuner/services/native_audio_bridge_service.dart';
 import 'features/tuner/view_models/tuner_view_model.dart';
+import 'features/tuner/models/tuner_settings.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,9 @@ void main() {
 AudioBridgeService _createAudioBridgeService() {
   const useMockBridge = bool.fromEnvironment('USE_MOCK_AUDIO_BRIDGE');
   if (useMockBridge) {
-    return MockAudioBridgeService();
+    return MockAudioBridgeService(
+      initialSettings: const TunerSettings(mockBridgeOverride: true),
+    );
   }
 
   if (defaultTargetPlatform == TargetPlatform.iOS) {

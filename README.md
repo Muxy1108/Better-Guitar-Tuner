@@ -55,3 +55,27 @@ The desktop bridge launches the locally built `mic_debug_runner`, passes the
 active tuning preset and mode, and consumes one JSON result per stdout line.
 Set `MIC_DEBUG_RUNNER_PATH` to override the runner binary location and
 `MIC_DEBUG_RUNNER_PRESET_FILE` to override the preset JSON path.
+
+Stage 5B hardens that bridge in a few ways:
+
+- bridge lifecycle is explicit: `idle`, `starting`, `listening`, `stopping`,
+  `error`
+- duplicate desktop starts are ignored when the current runner already matches
+  the active preset/mode/backend/device
+- unexpected subprocess exit is surfaced with the last exit code and stderr
+  tail
+- stdout is treated as NDJSON only, while stderr remains separate for human
+  logs
+- malformed stdout lines are recorded as diagnostics instead of killing the
+  realtime stream
+- runner command construction is platform-aware so Linux and Windows executable
+  differences stay isolated in one place
+
+Current desktop limitations:
+
+- Linux is the primary validated desktop path today
+- Windows command defaults and executable resolution are prepared in Flutter,
+  but real device-name validation still needs to be tested on a Windows host
+- A4 reference, tolerance, sensitivity, backend/device, and mock override now
+  have a Flutter-side settings foundation; persistence and full UI controls are
+  still follow-up work

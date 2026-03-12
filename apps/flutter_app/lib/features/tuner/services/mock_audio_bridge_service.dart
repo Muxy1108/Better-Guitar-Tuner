@@ -1,24 +1,49 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import '../models/audio_bridge_diagnostics.dart';
 import '../models/pitch_frame.dart';
+import '../models/tuner_settings.dart';
 import '../models/tuning_mode.dart';
 import '../models/tuning_preset.dart';
 import '../models/tuning_result.dart';
 import 'audio_bridge_service.dart';
 
 class MockAudioBridgeService implements AudioBridgeService {
+  MockAudioBridgeService({
+    TunerSettings initialSettings = const TunerSettings(),
+  })  : _settings = initialSettings,
+        _diagnostics = AudioBridgeDiagnostics(
+          state: AudioBridgeState.idle,
+          backend: initialSettings.backend ?? 'mock',
+          device: initialSettings.device ?? 'simulated',
+        );
+
   final StreamController<TuningResultModel> _controller =
       StreamController<TuningResultModel>.broadcast();
+  final StreamController<AudioBridgeDiagnostics> _diagnosticsController =
+      StreamController<AudioBridgeDiagnostics>.broadcast();
 
   Timer? _timer;
   TuningPreset? _preset;
   TunerMode _mode = TunerMode.auto;
   int? _manualStringIndex;
   double _phase = 0;
+  TunerSettings _settings;
+  AudioBridgeDiagnostics _diagnostics;
 
   @override
   AudioBridgeKind get bridgeKind => AudioBridgeKind.mock;
+
+  @override
+  AudioBridgeDiagnostics get diagnostics => _diagnostics;
+
+  @override
+  Stream<AudioBridgeDiagnostics> get diagnosticsStream =>
+      _diagnosticsController.stream;
+
+  @override
+  TunerSettings get settings => _settings;
 
   @override
   Stream<TuningResultModel> get tuningResults => _controller.stream;
@@ -43,6 +68,12 @@ class MockAudioBridgeService implements AudioBridgeService {
     _mode = mode;
     _manualStringIndex = manualStringIndex;
     _timer?.cancel();
+    _setDiagnostics(
+      _diagnostics.copyWith(
+        state: AudioBridgeState.listening,
+        clearLastError: true,
+      ),
+    );
 
     _timer = Timer.periodic(const Duration(milliseconds: 180), (_) {
       final nextResult = _buildResult();
@@ -55,6 +86,7 @@ class MockAudioBridgeService implements AudioBridgeService {
   Future<void> stopListening() async {
     _timer?.cancel();
     _timer = null;
+    _setDiagnostics(_diagnostics.copyWith(state: AudioBridgeState.idle));
   }
 
   @override
@@ -69,9 +101,21 @@ class MockAudioBridgeService implements AudioBridgeService {
   }
 
   @override
+  Future<void> updateSettings(TunerSettings settings) async {
+    _settings = settings;
+    _setDiagnostics(
+      _diagnostics.copyWith(
+        backend: settings.backend ?? 'mock',
+        device: settings.device ?? 'simulated',
+      ),
+    );
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     _controller.close();
+    _diagnosticsController.close();
   }
 
   TuningResultModel _buildResult() {
@@ -137,13 +181,19 @@ class MockAudioBridgeService implements AudioBridgeService {
   }
 
   TuningStatus _statusFromCents(double centsOffset) {
-    if (centsOffset < -5) {
+    final tolerance = _settings.tuningToleranceCents;
+    if (centsOffset < -tolerance) {
       return TuningStatus.tooLow;
     }
-    if (centsOffset > 5) {
+    if (centsOffset > tolerance) {
       return TuningStatus.tooHigh;
     }
     return TuningStatus.inTune;
+  }
+
+  void _setDiagnostics(AudioBridgeDiagnostics diagnostics) {
+    _diagnostics = diagnostics;
+    _diagnosticsController.add(diagnostics);
   }
 
   double _noteToFrequency(String note) {

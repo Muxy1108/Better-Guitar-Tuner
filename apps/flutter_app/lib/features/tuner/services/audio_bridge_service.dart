@@ -1,3 +1,5 @@
+import '../models/audio_bridge_diagnostics.dart';
+import '../models/tuner_settings.dart';
 import '../models/tuning_mode.dart';
 import '../models/tuning_preset.dart';
 import '../models/tuning_result.dart';
@@ -16,6 +18,12 @@ enum AudioPermissionState {
 
 abstract class AudioBridgeService {
   AudioBridgeKind get bridgeKind;
+
+  AudioBridgeDiagnostics get diagnostics;
+
+  Stream<AudioBridgeDiagnostics> get diagnosticsStream;
+
+  TunerSettings get settings;
 
   Stream<TuningResultModel> get tuningResults;
 
@@ -36,6 +44,8 @@ abstract class AudioBridgeService {
     required TunerMode mode,
     int? manualStringIndex,
   });
+
+  Future<void> updateSettings(TunerSettings settings);
 
   void dispose();
 }

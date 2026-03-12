@@ -31,8 +31,8 @@ constexpr int kDefaultHopSize = 1'024;
 constexpr int kDefaultStableDetectionsRequired = 3;
 constexpr float kMinimumOutputConfidence = 0.75f;
 constexpr float kMaximumAbsCentsForStability = 80.0f;
-constexpr auto kMinimumPrintInterval = std::chrono::milliseconds(350);
-constexpr auto kRepeatPrintInterval = std::chrono::milliseconds(1'200);
+constexpr auto kMinimumPrintInterval = std::chrono::milliseconds(45);
+constexpr auto kRepeatPrintInterval = std::chrono::milliseconds(120);
 constexpr std::size_t kReadChunkSamples = 512;
 constexpr float kWeakSignalConfidenceThreshold = 0.75f;
 constexpr float kWeakSignalCentsThreshold = 80.0f;
@@ -433,7 +433,7 @@ void PrintResult(const dsp_core::PitchResult& pitch_result,
     std::cout << ",\"error_message\":\""
               << EscapeJsonString(result.error_message) << "\"";
   }
-  std::cout << "}\n";
+  std::cout << "}\n" << std::flush;
 }
 
 }  // namespace
@@ -441,6 +441,7 @@ void PrintResult(const dsp_core::PitchResult& pitch_result,
 int main(int argc, char** argv) {
   std::signal(SIGINT, HandleSignal);
   std::signal(SIGTERM, HandleSignal);
+  std::cout.setf(std::ios::unitbuf);
 
   Options options;
   if (!ParseArgs(argc, argv, &options)) {
