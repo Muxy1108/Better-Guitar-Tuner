@@ -14,13 +14,21 @@ Current scope:
 
 - remove DC offset by subtracting the frame mean
 - reject frames with very low RMS or peak amplitude
-- compute the squared difference function across a guitar-relevant lag range
+- taper the analysis window to reduce edge and attack-transient bias
+- run the squared difference function across a guitar-relevant lag range
 - apply cumulative mean normalized difference to highlight periodicity
-- select the best lag below a fixed threshold and refine it with parabolic interpolation
+- prefer the first acceptable YIN valley instead of a raw global minimum
+- optionally promote a doubled period when it is materially more periodic, which
+  reduces octave-high errors on strong-even-harmonic input
+- combine YIN error with normalized autocorrelation to score noisy or unstable
+  candidates more conservatively
+- compare the full-frame estimate with a trailing-window estimate so fresh
+  attacks are less likely to override a steadier note later in the frame
 - convert the resulting frequency into MIDI, note name, and cents offset
 
-Confidence is derived from the normalized difference minimum: lower periodic error
-produces higher confidence, rather than using a fixed placeholder value.
+Confidence is derived from both the normalized difference minimum and the
+candidate autocorrelation, so noisy frames no longer look artificially strong
+just because they happen to produce one shallow YIN minimum.
 
 ## Assumptions
 
@@ -32,6 +40,6 @@ produces higher confidence, rather than using a fixed placeholder value.
 ## Known Limitations
 
 - designed for monophonic guitar-style notes, not chords
-- no explicit noise suppression, windowing, or harmonic cancellation yet
-- attack transients and octave-strong harmonics can still cause misses or octave errors
+- still uses a lightweight time-domain detector, not a full spectral tracker
+- attack transients and octave-strong harmonics are reduced but not eliminated
 - fixed thresholds may need adjustment once real microphone input and fixtures are added

@@ -11,18 +11,9 @@ import '../models/tuning_preset.dart';
 import '../models/tuning_result.dart';
 import '../services/audio_bridge_service.dart';
 import '../services/tuning_preset_repository.dart';
+import 'tuning_result_stabilizer.dart';
 
 class TunerViewModel extends ChangeNotifier {
-  static const Duration _minimumUiUpdateInterval = Duration(milliseconds: 40);
-  static const Duration _defaultNonPitchHoldDuration =
-      Duration(milliseconds: 280);
-  static const Duration _defaultStatusHoldDuration =
-      Duration(milliseconds: 180);
-  static const Duration _defaultTargetSwitchHoldDuration =
-      Duration(milliseconds: 140);
-  static const double _statusHysteresisCents = 2.0;
-  static const double _maxSmoothedCentsJump = 24.0;
-
   TunerViewModel({
     required AudioBridgeService audioBridgeService,
     required TuningPresetRepository presetRepository,
@@ -48,12 +39,7 @@ class TunerViewModel extends ChangeNotifier {
   AudioBridgeDiagnostics _bridgeDiagnostics =
       const AudioBridgeDiagnostics.idle();
   TunerSettings _settings = const TunerSettings();
-  TuningResultModel? _pendingSignalResult;
-  DateTime? _pendingSignalSince;
-  TuningResultModel? _pendingTargetResult;
-  DateTime? _pendingTargetSince;
-  DateTime? _lastUiUpdateAt;
-  DateTime? _lastStableStatusAt;
+  final TuningResultStabilizer _resultStabilizer = TuningResultStabilizer();
 
   List<TuningPreset> get presets => _presets;
   TuningPreset? get selectedPreset => _selectedPreset;
@@ -71,6 +57,9 @@ class TunerViewModel extends ChangeNotifier {
   TunerSettings get settings => _settings;
   double get rawCentsOffset => _latestRawResult.centsOffset;
   double get smoothedCentsOffset => _latestResult.centsOffset;
+  TuningSignalState get rawSignalState => _latestRawResult.signalState;
+  String? get lastUiSuppressionReason =>
+      _resultStabilizer.lastSuppressionReason;
 
   Future<void> initialize() async {
     _isLoading = true;
@@ -87,8 +76,7 @@ class TunerViewModel extends ChangeNotifier {
       _manualStringIndex = 0;
       _settings = _audioBridgeService.settings;
       _bridgeDiagnostics = _audioBridgeService.diagnostics;
-      _latestResult = _buildIdleResult();
-      _latestRawResult = _latestResult;
+      _resetDisplayedTuningState();
       _permissionState =
           await _audioBridgeService.getMicrophonePermissionStatus();
 
@@ -122,12 +110,7 @@ class TunerViewModel extends ChangeNotifier {
 
     _selectedPreset = preset;
     _manualStringIndex = 0;
-    _pendingSignalResult = null;
-    _pendingSignalSince = null;
-    _pendingTargetResult = null;
-    _pendingTargetSince = null;
-    _latestResult = _buildIdleResult();
-    _latestRawResult = _latestResult;
+    _resetDisplayedTuningState();
     _listeningErrorMessage = null;
     notifyListeners();
 
@@ -140,12 +123,7 @@ class TunerViewModel extends ChangeNotifier {
     }
 
     _mode = mode;
-    _pendingSignalResult = null;
-    _pendingSignalSince = null;
-    _pendingTargetResult = null;
-    _pendingTargetSince = null;
-    _latestResult = _buildIdleResult();
-    _latestRawResult = _latestResult;
+    _resetDisplayedTuningState();
     _listeningErrorMessage = null;
     notifyListeners();
     await _pushConfiguration();
@@ -157,12 +135,7 @@ class TunerViewModel extends ChangeNotifier {
     }
 
     _manualStringIndex = index;
-    _pendingSignalResult = null;
-    _pendingSignalSince = null;
-    _pendingTargetResult = null;
-    _pendingTargetSince = null;
-    _latestResult = _buildIdleResult();
-    _latestRawResult = _latestResult;
+    _resetDisplayedTuningState();
     _listeningErrorMessage = null;
     notifyListeners();
     await _pushConfiguration();
@@ -174,8 +147,7 @@ class TunerViewModel extends ChangeNotifier {
         await _audioBridgeService.stopListening();
       } finally {
         _isListening = false;
-        _latestResult = _buildIdleResult();
-        _latestRawResult = _latestResult;
+        _resetDisplayedTuningState();
         _listeningErrorMessage = null;
         notifyListeners();
       }
@@ -206,10 +178,7 @@ class TunerViewModel extends ChangeNotifier {
       );
 
       _isListening = true;
-      _pendingSignalResult = null;
-      _pendingSignalSince = null;
-      _pendingTargetResult = null;
-      _pendingTargetSince = null;
+      _resetStabilizationState();
       notifyListeners();
     } catch (error) {
       _isListening = false;
@@ -239,34 +208,22 @@ class TunerViewModel extends ChangeNotifier {
 
   void _handleTuningResult(TuningResultModel result) {
     _latestRawResult = result;
-    final nextResult = _stabilizeResult(result);
-    if (nextResult == null) {
+    final decision = _resultStabilizer.accept(result, settings: _settings);
+    if (!decision.producedResult) {
       return;
     }
 
-    final now = DateTime.now();
-    final hasMaterialChange = _hasMaterialChange(_latestResult, nextResult);
-    _latestResult = nextResult;
+    _latestResult = decision.result;
     _listeningErrorMessage = null;
-
-    if (!hasMaterialChange &&
-        _lastUiUpdateAt != null &&
-        now.difference(_lastUiUpdateAt!) < _minimumUiUpdateInterval) {
+    if (!decision.shouldNotify) {
       return;
     }
-
-    _lastUiUpdateAt = now;
     notifyListeners();
   }
 
   void _handleBridgeError(Object error) {
     _isListening = false;
-    _pendingSignalResult = null;
-    _pendingSignalSince = null;
-    _pendingTargetResult = null;
-    _pendingTargetSince = null;
-    _latestResult = _buildIdleResult();
-    _latestRawResult = _latestResult;
+    _resetDisplayedTuningState();
     _listeningErrorMessage = _formatError(error);
     notifyListeners();
   }
@@ -287,7 +244,8 @@ class TunerViewModel extends ChangeNotifier {
 
   Future<void> updateSettings(TunerSettings settings) async {
     _settings = settings;
-    final rebuiltResult = _stabilizeResult(_latestRawResult);
+    final rebuiltResult =
+        _resultStabilizer.reapply(_latestRawResult, settings: _settings);
     if (rebuiltResult != null) {
       _latestResult = rebuiltResult;
     }
@@ -324,107 +282,6 @@ class TunerViewModel extends ChangeNotifier {
     );
   }
 
-  TuningResultModel? _stabilizeResult(TuningResultModel result) {
-    final now = DateTime.now();
-    final signalHoldDuration = _signalHoldDurationFor(
-      previous: _latestResult.signalState,
-      next: result.signalState,
-      settings: _settings,
-    );
-    final smoothingFactor = _smoothingFactorFor(_settings);
-
-    if (_latestResult.signalState != result.signalState) {
-      if (_pendingSignalResult?.signalState != result.signalState) {
-        _pendingSignalResult = result;
-        _pendingSignalSince = now;
-        return null;
-      }
-
-      if (_pendingSignalSince != null &&
-          now.difference(_pendingSignalSince!) < signalHoldDuration) {
-        _pendingSignalResult = result;
-        return null;
-      }
-    }
-
-    _pendingSignalResult = null;
-    _pendingSignalSince = null;
-
-    if (_shouldDelayTargetSwitch(_latestResult, result)) {
-      if (_pendingTargetResult?.targetStringIndex != result.targetStringIndex) {
-        _pendingTargetResult = result;
-        _pendingTargetSince = now;
-        return null;
-      }
-
-      if (_pendingTargetSince != null &&
-          now.difference(_pendingTargetSince!) <
-              _targetSwitchHoldDurationFor(_settings)) {
-        return null;
-      }
-    }
-
-    _pendingTargetResult = null;
-    _pendingTargetSince = null;
-
-    if (!_latestResult.hasUsablePitch || !result.hasUsablePitch) {
-      final stabilized = _applyStatusHysteresis(result, now);
-      if (stabilized.hasUsablePitch) {
-        _lastStableStatusAt = now;
-      }
-      return stabilized;
-    }
-
-    if (_latestResult.targetStringIndex != result.targetStringIndex ||
-        _latestResult.mode != result.mode ||
-        _latestResult.tuningId != result.tuningId) {
-      final stabilized = _applyStatusHysteresis(result, now);
-      _lastStableStatusAt = now;
-      return stabilized;
-    }
-
-    final retainedWeight = 1.0 - smoothingFactor;
-    final centsDelta = result.centsOffset - _latestResult.centsOffset;
-    final shouldBypassSmoothing = centsDelta.abs() >= _maxSmoothedCentsJump;
-    final smoothedFrequencyHz = shouldBypassSmoothing
-        ? result.pitchFrame.frequencyHz
-        : (_latestResult.pitchFrame.frequencyHz * retainedWeight) +
-            (result.pitchFrame.frequencyHz * smoothingFactor);
-    final smoothedCents = shouldBypassSmoothing
-        ? result.centsOffset
-        : (_latestResult.centsOffset * retainedWeight) +
-            (result.centsOffset * smoothingFactor);
-
-    final stabilized = _applyStatusHysteresis(
-      result.copyWith(
-        centsOffset: smoothedCents,
-        pitchFrame: PitchFrame(
-          hasPitch: result.pitchFrame.hasPitch,
-          frequencyHz: smoothedFrequencyHz,
-          centsOffset: smoothedCents,
-          noteName: result.pitchFrame.noteName,
-          midiNote: result.pitchFrame.midiNote,
-          confidence: result.pitchFrame.confidence,
-        ),
-      ),
-      now,
-    );
-    _lastStableStatusAt = now;
-    return stabilized;
-  }
-
-  bool _hasMaterialChange(
-    TuningResultModel previous,
-    TuningResultModel next,
-  ) {
-    return previous.signalState != next.signalState ||
-        previous.status != next.status ||
-        previous.targetStringIndex != next.targetStringIndex ||
-        previous.mode != next.mode ||
-        previous.tuningId != next.tuningId ||
-        previous.pitchFrame.hasPitch != next.pitchFrame.hasPitch;
-  }
-
   String _formatError(Object error) {
     if (error is PlatformException) {
       return error.message ?? error.code;
@@ -441,131 +298,14 @@ class TunerViewModel extends ChangeNotifier {
     super.dispose();
   }
 
-  TuningResultModel _applyStatusHysteresis(
-    TuningResultModel result,
-    DateTime now,
-  ) {
-    if (!result.hasUsablePitch || !_latestResult.hasUsablePitch) {
-      return result;
-    }
-
-    if (_latestResult.targetStringIndex != result.targetStringIndex ||
-        _latestResult.mode != result.mode ||
-        _latestResult.tuningId != result.tuningId) {
-      return result;
-    }
-
-    final tolerance = _settings.tuningToleranceCents;
-    final previousStatus = _latestResult.status;
-    final currentAbsCents = result.centsOffset.abs();
-
-    if (previousStatus == TuningStatus.inTune &&
-        result.status != TuningStatus.inTune &&
-        currentAbsCents <= tolerance + _statusHysteresisCents) {
-      return result.copyWith(status: TuningStatus.inTune);
-    }
-
-    if (previousStatus == TuningStatus.tooLow &&
-        result.status == TuningStatus.inTune &&
-        result.centsOffset <= -tolerance + _statusHysteresisCents) {
-      return result.copyWith(status: TuningStatus.tooLow);
-    }
-
-    if (previousStatus == TuningStatus.tooHigh &&
-        result.status == TuningStatus.inTune &&
-        result.centsOffset >= tolerance - _statusHysteresisCents) {
-      return result.copyWith(status: TuningStatus.tooHigh);
-    }
-
-    if (result.status == TuningStatus.inTune &&
-        previousStatus != TuningStatus.inTune &&
-        currentAbsCents >= tolerance - _statusHysteresisCents) {
-      return result.copyWith(status: previousStatus);
-    }
-
-    if (previousStatus == result.status) {
-      return result;
-    }
-
-    if (_lastStableStatusAt != null &&
-        now.difference(_lastStableStatusAt!) <
-            _statusHoldDurationFor(_settings)) {
-      return result.copyWith(status: previousStatus);
-    }
-
-    return result;
+  void _resetDisplayedTuningState() {
+    final idleResult = _buildIdleResult();
+    _latestResult = idleResult;
+    _latestRawResult = idleResult;
+    _resultStabilizer.reset(idleResult);
   }
 
-  Duration _signalHoldDurationFor({
-    required TuningSignalState previous,
-    required TuningSignalState next,
-    required TunerSettings settings,
-  }) {
-    if (next == TuningSignalState.pitched) {
-      switch (settings.sensitivityLevel) {
-        case TunerSensitivityLevel.relaxed:
-          return const Duration(milliseconds: 120);
-        case TunerSensitivityLevel.precise:
-          return const Duration(milliseconds: 60);
-        case TunerSensitivityLevel.balanced:
-          return const Duration(milliseconds: 90);
-      }
-    }
-
-    switch (settings.sensitivityLevel) {
-      case TunerSensitivityLevel.relaxed:
-        return const Duration(milliseconds: 340);
-      case TunerSensitivityLevel.precise:
-        return const Duration(milliseconds: 180);
-      case TunerSensitivityLevel.balanced:
-        return _defaultNonPitchHoldDuration;
-    }
-  }
-
-  double _smoothingFactorFor(TunerSettings settings) {
-    switch (settings.sensitivityLevel) {
-      case TunerSensitivityLevel.relaxed:
-        return 0.36;
-      case TunerSensitivityLevel.precise:
-        return 0.84;
-      case TunerSensitivityLevel.balanced:
-        return 0.68;
-    }
-  }
-
-  Duration _statusHoldDurationFor(TunerSettings settings) {
-    switch (settings.sensitivityLevel) {
-      case TunerSensitivityLevel.relaxed:
-        return const Duration(milliseconds: 240);
-      case TunerSensitivityLevel.precise:
-        return const Duration(milliseconds: 120);
-      case TunerSensitivityLevel.balanced:
-        return _defaultStatusHoldDuration;
-    }
-  }
-
-  Duration _targetSwitchHoldDurationFor(TunerSettings settings) {
-    switch (settings.sensitivityLevel) {
-      case TunerSensitivityLevel.relaxed:
-        return const Duration(milliseconds: 190);
-      case TunerSensitivityLevel.precise:
-        return const Duration(milliseconds: 90);
-      case TunerSensitivityLevel.balanced:
-        return _defaultTargetSwitchHoldDuration;
-    }
-  }
-
-  bool _shouldDelayTargetSwitch(
-    TuningResultModel previous,
-    TuningResultModel next,
-  ) {
-    return previous.hasUsablePitch &&
-        next.hasUsablePitch &&
-        previous.mode == TunerMode.auto &&
-        next.mode == TunerMode.auto &&
-        previous.tuningId == next.tuningId &&
-        previous.targetStringIndex != null &&
-        next.targetStringIndex != null &&
-        previous.targetStringIndex != next.targetStringIndex;
+  void _resetStabilizationState() {
+    _resultStabilizer.reset(_latestResult);
   }
 }

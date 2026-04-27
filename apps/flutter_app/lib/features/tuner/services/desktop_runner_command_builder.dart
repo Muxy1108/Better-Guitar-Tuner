@@ -19,9 +19,21 @@ class DesktopRunnerCommand {
 }
 
 class DesktopRunnerCommandBuilder {
-  const DesktopRunnerCommandBuilder();
+  const DesktopRunnerCommandBuilder({
+    this.isWindowsOverride,
+    this.isMacOSOverride,
+  });
 
   static const String _runnerBaseName = 'mic_debug_runner';
+  static const List<String> _configNames = <String>[
+    'Debug',
+    'Release',
+    'RelWithDebInfo',
+    'MinSizeRel',
+  ];
+
+  final bool? isWindowsOverride;
+  final bool? isMacOSOverride;
 
   DesktopRunnerCommand build({
     required String runnerPath,
@@ -31,6 +43,7 @@ class DesktopRunnerCommandBuilder {
     required String backend,
     required String device,
     required TunerSettings settings,
+    String? ffmpegPath,
     int? manualStringIndex,
     String? workingDirectory,
   }) {
@@ -57,6 +70,11 @@ class DesktopRunnerCommandBuilder {
       settings.sensitivityLevel.name,
     ];
 
+    final normalizedFfmpegPath = _normalizeExecutableOverride(ffmpegPath);
+    if (normalizedFfmpegPath != null) {
+      arguments.addAll(<String>['--ffmpeg-path', normalizedFfmpegPath]);
+    }
+
     if (normalizedDevice.isNotEmpty) {
       arguments.addAll(<String>['--device', normalizedDevice]);
     }
@@ -79,58 +97,96 @@ class DesktopRunnerCommandBuilder {
     final root = repositoryRoot;
     final separator = Platform.pathSeparator;
     final executableName = '$_runnerBaseName$executableSuffix';
-    final buildPath = '$root${separator}build';
-    final toolPath = '$buildPath${separator}tools$separator$_runnerBaseName';
-    final configNames = <String>['Debug', 'Release', 'RelWithDebInfo'];
+    final buildRoots = <String>[
+      root,
+      '$root${separator}build',
+      '$root${separator}out${separator}build',
+      '$root${separator}cmake-build-debug',
+      '$root${separator}cmake-build-release',
+      '$root${separator}cmake-build-relwithdebinfo',
+    ];
     final candidates = <String>[
-      '$toolPath$separator$executableName',
-      '$buildPath$separator$executableName',
+      '$root$separator$executableName',
+      '$root${separator}bin$separator$executableName',
     ];
 
-    for (final config in configNames) {
-      candidates.add('$toolPath$separator$config$separator$executableName');
-      candidates.add('$buildPath$separator$config$separator$executableName');
+    for (final buildRoot in buildRoots) {
+      final toolPath = '$buildRoot${separator}tools$separator$_runnerBaseName';
+      final directCandidates = <String>[
+        '$buildRoot$separator$executableName',
+        '$buildRoot${separator}bin$separator$executableName',
+        '$toolPath$separator$executableName',
+      ];
+      candidates.addAll(directCandidates);
+
+      for (final config in _configNames) {
+        candidates.add(
+          '$buildRoot$separator$config$separator$executableName',
+        );
+        candidates.add(
+          '$buildRoot${separator}bin$separator$config$separator$executableName',
+        );
+        candidates.add(
+          '$toolPath$separator$config$separator$executableName',
+        );
+      }
     }
 
-    if (Platform.isWindows) {
+    if (_isWindows) {
       candidates.addAll(<String>[
-        '$buildPath${separator}bin$separator$executableName',
-        '$buildPath${separator}bin${separator}Debug$separator$executableName',
-        '$buildPath${separator}bin${separator}Release$separator$executableName',
+        '$root${separator}build${separator}windows${separator}x64'
+            '$separator$executableName',
+        '$root${separator}build${separator}windows${separator}x64'
+            '${separator}runner$separator$executableName',
+        '$root${separator}build${separator}windows${separator}runner'
+            '$separator$executableName',
       ]);
+      for (final config in _configNames) {
+        candidates.addAll(<String>[
+          '$root${separator}build${separator}windows${separator}x64'
+              '$separator$config$separator$executableName',
+          '$root${separator}build${separator}windows${separator}x64'
+              '${separator}runner$separator$config$separator$executableName',
+          '$root${separator}build${separator}windows${separator}runner'
+              '$separator$config$separator$executableName',
+        ]);
+      }
     }
 
     return candidates.toSet().toList(growable: false);
   }
 
   String get defaultBackend {
-    if (Platform.isWindows) {
+    if (_isWindows) {
       return 'dshow';
     }
-    if (Platform.isMacOS) {
+    if (_isMacOS) {
       return 'avfoundation';
     }
     return 'pulse';
   }
 
   String get defaultDevice {
-    if (Platform.isWindows) {
+    if (_isWindows) {
       return 'audio=Microphone';
     }
-    if (Platform.isMacOS) {
+    if (_isMacOS) {
       return ':0';
     }
     return 'default';
   }
 
-  String get executableSuffix => Platform.isWindows ? '.exe' : '';
+  String get executableSuffix => _isWindows ? '.exe' : '';
+
+  bool get _isWindows => isWindowsOverride ?? Platform.isWindows;
+  bool get _isMacOS => isMacOSOverride ?? Platform.isMacOS;
 
   String _normalizeBackend(String backend) {
     final trimmed = backend.trim();
     if (trimmed.isEmpty) {
       return defaultBackend;
     }
-    return trimmed;
+    return trimmed.toLowerCase();
   }
 
   String _normalizeDevice({
@@ -140,6 +196,13 @@ class DesktopRunnerCommandBuilder {
     final trimmed = device.trim();
     if (trimmed.isEmpty) {
       return '';
+    }
+
+    if (backend == 'avfoundation') {
+      final numericDevice = int.tryParse(trimmed);
+      if (numericDevice != null) {
+        return ':$numericDevice';
+      }
     }
 
     if (backend != 'dshow') {
@@ -152,5 +215,13 @@ class DesktopRunnerCommandBuilder {
     }
 
     return 'audio=$trimmed';
+  }
+
+  String? _normalizeExecutableOverride(String? path) {
+    final trimmed = path?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 }

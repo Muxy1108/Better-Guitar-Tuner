@@ -22,10 +22,10 @@ enum class PitchDecisionReason {
 struct PitchDetectionConfig {
   float min_detectable_frequency_hz = 60.0f;
   float max_detectable_frequency_hz = 1'000.0f;
-  float min_signal_rms = 0.008f;
-  float min_signal_peak = 0.025f;
-  float max_yin_threshold = 0.24f;
-  float min_acceptable_confidence = 0.58f;
+  float min_signal_rms = 0.0065f;
+  float min_signal_peak = 0.020f;
+  float max_yin_threshold = 0.27f;
+  float min_acceptable_confidence = 0.50f;
   int minimum_periods_required = 2;
 };
 

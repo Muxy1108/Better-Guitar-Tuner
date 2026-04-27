@@ -77,8 +77,8 @@ int main() {
   tuning_engine::TuningThresholds thresholds;
   thresholds.in_tune_cents = 5.0f;
   thresholds.a4_reference_hz = 440.0f;
-  thresholds.auto_target_retain_cents = 28.0f;
-  thresholds.auto_target_switch_delta_cents = 7.0f;
+  thresholds.auto_target_retain_cents = 22.0f;
+  thresholds.auto_target_switch_delta_cents = 4.0f;
   const tuning_engine::TuningResult too_low = tuning_engine::evaluate_tuning(
       MakePitch(a2 * 0.99f), *standard, tuning_engine::TuningMode::kManual, 1,
       -1, thresholds);
@@ -113,8 +113,8 @@ int main() {
   tuning_engine::TuningThresholds alternate_reference;
   alternate_reference.in_tune_cents = 5.0f;
   alternate_reference.a4_reference_hz = 442.0f;
-  alternate_reference.auto_target_retain_cents = 28.0f;
-  alternate_reference.auto_target_switch_delta_cents = 7.0f;
+  alternate_reference.auto_target_retain_cents = 22.0f;
+  alternate_reference.auto_target_switch_delta_cents = 4.0f;
   const tuning_engine::TuningResult calibrated_result =
       tuning_engine::evaluate_tuning(MakePitch(110.0f), *standard,
                                      tuning_engine::TuningMode::kManual, 1, -1,
@@ -143,6 +143,44 @@ int main() {
                                      thresholds);
   if (!Check(retained_auto_target.target_string_index == 2,
              "auto mode should retain the previous string when the new target is not materially better")) {
+    return 1;
+  }
+
+  tuning_engine::TuningThresholds invalid_thresholds = thresholds;
+  invalid_thresholds.in_tune_cents = 0.0f;
+  const tuning_engine::TuningResult invalid_threshold_result =
+      tuning_engine::evaluate_tuning(MakePitch(110.0f), *standard,
+                                     tuning_engine::TuningMode::kManual, 1, -1,
+                                     invalid_thresholds);
+  if (!Check(invalid_threshold_result.error_message ==
+                 "in-tune threshold must be positive",
+             "invalid thresholds should fail explicitly") ||
+      !Check(!invalid_threshold_result.has_target,
+             "threshold validation failures should abort before target resolution")) {
+    return 1;
+  }
+
+  dsp_core::PitchResult invalid_pitch = MakePitch(110.0f);
+  invalid_pitch.detected_frequency_hz = 0.0f;
+  const tuning_engine::TuningResult invalid_pitch_result =
+      tuning_engine::evaluate_tuning(invalid_pitch, *standard,
+                                     tuning_engine::TuningMode::kManual, 1);
+  if (!Check(invalid_pitch_result.error_message ==
+                 "detected pitch frequency must be positive",
+             "invalid pitched payloads should be rejected") ||
+      !Check(!invalid_pitch_result.has_target,
+             "invalid pitch payloads should not progress into tuning decisions")) {
+    return 1;
+  }
+
+  tuning_engine::TuningPreset invalid_preset = *standard;
+  invalid_preset.strings[0].midi_note = -1;
+  const tuning_engine::TuningResult invalid_preset_result =
+      tuning_engine::evaluate_tuning(MakePitch(82.41f), invalid_preset,
+                                     tuning_engine::TuningMode::kAuto);
+  if (!Check(invalid_preset_result.error_message ==
+                 "preset contains an invalid midi note at string index 0",
+             "evaluate_tuning should defend against invalid preset payloads")) {
     return 1;
   }
 

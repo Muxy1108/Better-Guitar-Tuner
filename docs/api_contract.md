@@ -238,6 +238,7 @@ Current behavior:
   on stderr
 - Includes tuning result fields plus signal metadata needed by the Flutter UI
 - Applies sensitivity-specific desktop tuning profiles for stability counts,
+  print cadence, and auto-target responsiveness
   weak-signal filtering, output confidence, and auto-target retention
 - Emits signal metrics and analysis reasons in JSON and logs target-switch or
   filtered-frame diagnostics on stderr

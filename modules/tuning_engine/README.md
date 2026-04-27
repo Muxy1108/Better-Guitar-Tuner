@@ -47,6 +47,8 @@ Auto mode:
 - requires a detected pitch
 - compares the detected frequency against every open string in the active tuning
 - chooses the string with the smallest absolute cents difference
+- retains the previous string only within a modest cents window so real plucks
+  can retarget faster when a new string is clearly closer
 
 Manual mode:
 

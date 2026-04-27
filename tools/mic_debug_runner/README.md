@@ -90,6 +90,10 @@ Useful flags:
 --preset-file <path>
 ```
 
+Balanced mode now favors quicker pluck response by default: `--stable-count`
+defaults to `1`, meaningful frames can emit every `40ms`, and unchanged
+pitched-state refreshes repeat every `120ms`.
+
 Example output:
 
 ```json

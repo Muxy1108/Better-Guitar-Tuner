@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import '../models/audio_bridge_diagnostics.dart';
@@ -9,6 +8,8 @@ import '../models/tuning_preset.dart';
 import '../models/tuning_result.dart';
 import 'audio_bridge_service.dart';
 import 'desktop_runner_command_builder.dart';
+import 'desktop_runner_session.dart';
+import 'desktop_runtime_locator.dart';
 
 class DesktopProcessAudioBridgeService implements AudioBridgeService {
   DesktopProcessAudioBridgeService({
@@ -16,18 +17,29 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     String? presetFileOverride,
     String? backendOverride,
     String? deviceOverride,
+    String? repositoryRootOverride,
+    String? ffmpegPathOverride,
     DesktopRunnerCommandBuilder commandBuilder =
         const DesktopRunnerCommandBuilder(),
     TunerSettings initialSettings = const TunerSettings(),
-  })  : _runnerPathOverride =
-            runnerPathOverride ?? Platform.environment['MIC_DEBUG_RUNNER_PATH'],
-        _presetFileOverride = presetFileOverride ??
-            Platform.environment['MIC_DEBUG_RUNNER_PRESET_FILE'],
-        _backendOverride =
+  })  : _backendOverride =
             backendOverride ?? Platform.environment['MIC_DEBUG_RUNNER_BACKEND'],
         _deviceOverride =
             deviceOverride ?? Platform.environment['MIC_DEBUG_RUNNER_DEVICE'],
         _commandBuilder = commandBuilder,
+        _runtimeLocator = DesktopRuntimeLocator(
+          runnerPathOverride: runnerPathOverride ??
+              Platform.environment['MIC_DEBUG_RUNNER_PATH'],
+          presetFileOverride: presetFileOverride ??
+              Platform.environment['MIC_DEBUG_RUNNER_PRESET_FILE'],
+          repositoryRootOverride: repositoryRootOverride ??
+              Platform.environment[
+                  DesktopRuntimeLocator.repositoryRootOverrideEnvironmentKey],
+          ffmpegPathOverride: ffmpegPathOverride ??
+              Platform.environment[
+                  DesktopRuntimeLocator.ffmpegPathOverrideEnvironmentKey],
+          commandBuilder: commandBuilder,
+        ),
         _settings = initialSettings,
         _diagnostics = AudioBridgeDiagnostics(
           state: AudioBridgeState.idle,
@@ -41,29 +53,25 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
               commandBuilder.defaultDevice,
         );
 
-  static const int _maxStderrLines = 8;
-
   final StreamController<TuningResultModel> _controller =
       StreamController<TuningResultModel>.broadcast();
   final StreamController<AudioBridgeDiagnostics> _diagnosticsController =
       StreamController<AudioBridgeDiagnostics>.broadcast();
 
-  final String? _runnerPathOverride;
-  final String? _presetFileOverride;
   final String? _backendOverride;
   final String? _deviceOverride;
   final DesktopRunnerCommandBuilder _commandBuilder;
+  final DesktopRuntimeLocator _runtimeLocator;
 
-  Process? _process;
-  StreamSubscription<String>? _stdoutSubscription;
-  StreamSubscription<String>? _stderrSubscription;
+  DesktopRunnerSession? _session;
   TuningPreset? _currentPreset;
   TunerMode _currentMode = TunerMode.auto;
   int? _currentManualStringIndex;
   TunerSettings _settings;
   AudioBridgeDiagnostics _diagnostics;
   _RunnerLaunchConfig? _activeLaunchConfig;
-  bool _stopRequested = false;
+  int _nextLaunchGeneration = 0;
+  int? _activeLaunchGeneration;
   bool _isDisposed = false;
 
   @override
@@ -103,7 +111,7 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     _currentManualStringIndex = manualStringIndex;
 
     final launchConfig = _buildLaunchConfig();
-    if (_process != null && _activeLaunchConfig == launchConfig) {
+    if (_session != null && _activeLaunchConfig == launchConfig) {
       _setDiagnostics(
         _diagnostics.copyWith(
           state: AudioBridgeState.listening,
@@ -118,7 +126,6 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
 
   @override
   Future<void> stopListening() async {
-    _stopRequested = true;
     await _stopActiveProcess();
     if (!_isDisposed) {
       _setDiagnostics(_diagnostics.copyWith(state: AudioBridgeState.idle));
@@ -140,7 +147,7 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       return;
     }
 
-    if (_process == null) {
+    if (_session == null) {
       return;
     }
 
@@ -163,7 +170,7 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       ),
     );
 
-    if (_process == null || !settingsChanged) {
+    if (_session == null || !settingsChanged) {
       return;
     }
 
@@ -199,41 +206,44 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     );
 
     await _stopActiveProcess();
-    _stopRequested = false;
 
     try {
-      final process = await Process.start(
-        launchConfig.command.executablePath,
-        launchConfig.command.arguments,
-        workingDirectory: launchConfig.command.workingDirectory,
-        runInShell: false,
+      final launchGeneration = ++_nextLaunchGeneration;
+      late final DesktopRunnerSession session;
+      session = DesktopRunnerSession(
+        command: launchConfig.command,
+        onResult: (result) {
+          if (_activeLaunchGeneration != launchGeneration ||
+              !identical(_session, session)) {
+            return;
+          }
+          _controller.add(result);
+        },
+        onNonFatalIssue: (message) {
+          if (_activeLaunchGeneration != launchGeneration ||
+              !identical(_session, session)) {
+            return;
+          }
+          _recordNonFatalBridgeIssue(message);
+        },
+        onStderrTailChanged: (stderrLines) {
+          if (_activeLaunchGeneration != launchGeneration ||
+              !identical(_session, session)) {
+            return;
+          }
+          _handleStderrTailChanged(stderrLines);
+        },
+        onExit: (exitedSession, exitCode, stderrLines) {
+          if (_activeLaunchGeneration != launchGeneration) {
+            return;
+          }
+          _handleSessionExit(exitedSession, exitCode, stderrLines);
+        },
       );
-
-      _process = process;
+      _session = session;
       _activeLaunchConfig = launchConfig;
-      final stderrLines = <String>[];
-
-      final stdoutSubscription = process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-        _handleStdoutLine,
-        onError: (Object error, StackTrace stackTrace) {
-          _recordNonFatalBridgeIssue('Runner stdout stream failed: $error');
-        },
-      );
-
-      final stderrSubscription = process.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-        (line) => _handleStderrLine(line, stderrLines),
-        onError: (Object error, StackTrace stackTrace) {
-          _recordNonFatalBridgeIssue('Runner stderr stream failed: $error');
-        },
-      );
-      _stdoutSubscription = stdoutSubscription;
-      _stderrSubscription = stderrSubscription;
+      _activeLaunchGeneration = launchGeneration;
+      await session.start();
 
       _setDiagnostics(
         _diagnostics.copyWith(
@@ -242,20 +252,13 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
           backend: launchConfig.command.backend,
           device: launchConfig.command.device,
           runnerPath: launchConfig.command.executablePath,
-          stderrTail: stderrLines,
-        ),
-      );
-
-      unawaited(
-        _watchProcessExit(
-          process,
-          stdoutSubscription: stdoutSubscription,
-          stderrSubscription: stderrSubscription,
-          stderrLines: stderrLines,
+          stderrTail: const <String>[],
         ),
       );
     } catch (error) {
+      _session = null;
       _activeLaunchConfig = null;
+      _activeLaunchGeneration = null;
       _setDiagnostics(
         _diagnostics.copyWith(
           state: AudioBridgeState.error,
@@ -266,28 +269,20 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     }
   }
 
-  Future<void> _watchProcessExit(
-    Process process, {
-    required StreamSubscription<String> stdoutSubscription,
-    required StreamSubscription<String> stderrSubscription,
-    required List<String> stderrLines,
-  }) async {
-    final exitCode = await process.exitCode;
-    final isCurrentProcess = identical(_process, process);
-
-    await stdoutSubscription.cancel();
-    await stderrSubscription.cancel();
-
-    if (!isCurrentProcess) {
+  void _handleSessionExit(
+    DesktopRunnerSession session,
+    int exitCode,
+    List<String> stderrLines,
+  ) {
+    if (!identical(_session, session)) {
       return;
     }
 
-    _process = null;
-    _stdoutSubscription = null;
-    _stderrSubscription = null;
+    _session = null;
     _activeLaunchConfig = null;
+    _activeLaunchGeneration = null;
 
-    if (_stopRequested) {
+    if (session.stopRequested) {
       _setDiagnostics(
         _diagnostics.copyWith(
           state: AudioBridgeState.idle,
@@ -316,72 +311,24 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
   }
 
   Future<void> _stopActiveProcess() async {
-    final process = _process;
-    _process = null;
-
-    final stdoutSubscription = _stdoutSubscription;
-    final stderrSubscription = _stderrSubscription;
-    _stdoutSubscription = null;
-    _stderrSubscription = null;
+    final session = _session;
+    _session = null;
     _activeLaunchConfig = null;
+    _activeLaunchGeneration = null;
 
-    if (process == null) {
-      await stdoutSubscription?.cancel();
-      await stderrSubscription?.cancel();
+    if (session == null) {
       return;
     }
 
     _setDiagnostics(_diagnostics.copyWith(state: AudioBridgeState.stopping));
-
-    process.kill();
-    try {
-      await process.exitCode.timeout(const Duration(seconds: 2));
-    } on TimeoutException {
-      if (!Platform.isWindows) {
-        process.kill(ProcessSignal.sigkill);
-        await process.exitCode.timeout(const Duration(seconds: 2));
-      }
-    } finally {
-      await stdoutSubscription?.cancel();
-      await stderrSubscription?.cancel();
-    }
+    await session.stop();
   }
 
-  void _handleStdoutLine(String line) {
-    final trimmedLine = line.trim();
-    if (trimmedLine.isEmpty) {
-      return;
-    }
-
-    try {
-      final decoded = jsonDecode(trimmedLine);
-      if (decoded is! Map) {
-        throw const FormatException(
-          'Expected one JSON object per stdout line from mic_debug_runner.',
-        );
-      }
-
-      _controller.add(
-        TuningResultModel.fromMap(Map<Object?, Object?>.from(decoded)),
-      );
-    } catch (error) {
-      _recordNonFatalBridgeIssue(
-        'Ignored malformed mic_debug_runner stdout line: $trimmedLine',
-      );
-    }
+  void _recordNonFatalBridgeIssue(String message) {
+    _setDiagnostics(_diagnostics.copyWith(lastError: message));
   }
 
-  void _handleStderrLine(String line, List<String> stderrLines) {
-    final trimmedLine = line.trim();
-    if (trimmedLine.isEmpty) {
-      return;
-    }
-
-    stderrLines.add(trimmedLine);
-    if (stderrLines.length > _maxStderrLines) {
-      stderrLines.removeAt(0);
-    }
-
+  void _handleStderrTailChanged(List<String> stderrLines) {
     _setDiagnostics(
       _diagnostics.copyWith(
         stderrTail: List<String>.unmodifiable(stderrLines),
@@ -389,30 +336,25 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
     );
   }
 
-  void _recordNonFatalBridgeIssue(String message) {
-    _setDiagnostics(_diagnostics.copyWith(lastError: message));
-  }
-
   _RunnerLaunchConfig _buildLaunchConfig() {
-    final repositoryRoot = _resolveRepositoryRoot();
-    final runnerFile = _resolveRunnerFile(repositoryRoot);
-    final presetFile = _resolvePresetFile(repositoryRoot);
+    final runtimePaths = _runtimeLocator.resolve();
     final preset = _currentPreset;
     if (preset == null) {
       throw StateError('A tuning preset must be selected before listening.');
     }
 
     final command = _commandBuilder.build(
-      runnerPath: runnerFile.path,
+      runnerPath: runtimePaths.runnerExecutablePath,
       presetId: preset.id,
       mode: _currentMode.name,
-      presetFilePath: presetFile.path,
+      presetFilePath: runtimePaths.presetFilePath,
       backend: _resolvedBackend,
       device: _resolvedDevice,
       settings: _settings,
+      ffmpegPath: runtimePaths.ffmpegExecutablePath,
       manualStringIndex:
           _currentMode == TunerMode.manual ? _currentManualStringIndex : null,
-      workingDirectory: repositoryRoot?.path,
+      workingDirectory: runtimePaths.workingDirectory,
     );
 
     return _RunnerLaunchConfig(
@@ -422,99 +364,6 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       manualStringIndex:
           _currentMode == TunerMode.manual ? _currentManualStringIndex : null,
     );
-  }
-
-  Directory? _resolveRepositoryRoot() {
-    for (final baseDirectory in _candidateBaseDirectories()) {
-      Directory current = baseDirectory;
-      for (var depth = 0; depth < 8; depth += 1) {
-        if (_hasRepositoryMarkers(current)) {
-          return current;
-        }
-        final parent = current.parent;
-        if (parent.path == current.path) {
-          break;
-        }
-        current = parent;
-      }
-    }
-    return null;
-  }
-
-  Iterable<Directory> _candidateBaseDirectories() sync* {
-    yield Directory.current.absolute;
-    yield File(Platform.resolvedExecutable).parent.absolute;
-
-    final script = Platform.script;
-    if (script.scheme == 'file') {
-      yield File.fromUri(script).parent.absolute;
-    }
-  }
-
-  bool _hasRepositoryMarkers(Directory directory) {
-    return File('${directory.path}${Platform.pathSeparator}modules'
-                '${Platform.pathSeparator}tuning_config${Platform.pathSeparator}'
-                'presets${Platform.pathSeparator}tuning_presets.json')
-            .existsSync() &&
-        Directory('${directory.path}${Platform.pathSeparator}tools'
-                '${Platform.pathSeparator}mic_debug_runner')
-            .existsSync();
-  }
-
-  File _resolveRunnerFile(Directory? repositoryRoot) {
-    final override = _runnerPathOverride;
-    if (override != null && override.trim().isNotEmpty) {
-      final file = File(override).absolute;
-      if (file.existsSync()) {
-        return file;
-      }
-      throw StateError('MIC_DEBUG_RUNNER_PATH does not exist: ${file.path}');
-    }
-
-    final candidates = repositoryRoot == null
-        ? const <String>[]
-        : _commandBuilder.candidateRunnerPaths(repositoryRoot.path);
-    for (final candidate in candidates) {
-      final file = File(candidate);
-      if (file.existsSync()) {
-        return file;
-      }
-    }
-
-    throw StateError(
-      'mic_debug_runner binary was not found. Checked: '
-      '${candidates.join(', ')}. Build it with '
-      '`cmake -S . -B build && cmake --build build --target mic_debug_runner` '
-      'or set MIC_DEBUG_RUNNER_PATH.',
-    );
-  }
-
-  File _resolvePresetFile(Directory? repositoryRoot) {
-    final override = _presetFileOverride;
-    if (override != null && override.trim().isNotEmpty) {
-      final file = File(override).absolute;
-      if (file.existsSync()) {
-        return file;
-      }
-      throw StateError(
-        'MIC_DEBUG_RUNNER_PRESET_FILE does not exist: ${file.path}',
-      );
-    }
-
-    if (repositoryRoot == null) {
-      throw StateError(
-        'Could not resolve repository root for tuning presets. '
-        'Set MIC_DEBUG_RUNNER_PRESET_FILE.',
-      );
-    }
-
-    final file = File('${repositoryRoot.path}${Platform.pathSeparator}modules'
-        '${Platform.pathSeparator}tuning_config${Platform.pathSeparator}'
-        'presets${Platform.pathSeparator}tuning_presets.json');
-    if (!file.existsSync()) {
-      throw StateError('Preset file was not found: ${file.path}');
-    }
-    return file;
   }
 
   String get _resolvedBackend =>
@@ -539,12 +388,22 @@ class DesktopProcessAudioBridgeService implements AudioBridgeService {
       launchConfig.command.executablePath,
       ...launchConfig.command.arguments,
     ].join(' ');
+    final workingDirectory = launchConfig.command.workingDirectory;
     final platformHint = Platform.isWindows
         ? ' On Windows, confirm that the selected DirectShow backend/device '
             'matches `ffmpeg -list_devices true -f dshow -i dummy` output and '
             'that the runner path points to a built `.exe`.'
-        : '';
-    return 'Failed to start mic_debug_runner with `$command`: $error.'
+        : Platform.isMacOS
+            ? ' On macOS, confirm that `avfoundation` device syntax matches '
+                '`ffmpeg -f avfoundation -list_devices true -i ""` and that '
+                'GUI launch PATH limitations are handled with '
+                'MIC_DEBUG_RUNNER_FFMPEG_PATH when needed.'
+            : '';
+    final workingDirectorySuffix = workingDirectory == null
+        ? ''
+        : ' (working directory: $workingDirectory)';
+    return 'Failed to start mic_debug_runner with `$command`'
+        '$workingDirectorySuffix: $error.'
         '$platformHint';
   }
 }

@@ -2,322 +2,132 @@
 
 #include "dsp_core/pitch_utils.h"
 
-#include <cctype>
-#include <cstdlib>
+#include <nlohmann/json.hpp>
+
 #include <fstream>
-#include <map>
+#include <cctype>
 #include <sstream>
+#include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace tuning_engine {
 namespace {
 
-struct JsonValue {
-  enum class Type {
-    kObject,
-    kArray,
-    kString,
-  };
+using JsonValue = nlohmann::json;
 
-  Type type = Type::kString;
-  std::map<std::string, JsonValue> object_value;
-  std::vector<JsonValue> array_value;
-  std::string string_value;
+struct JsonPresetDefinition {
+  std::string id;
+  std::string name;
+  std::string instrument;
+  std::vector<std::string> notes;
 };
 
-class JsonParser {
- public:
-  explicit JsonParser(const std::string& text) : text_(text) {}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(JsonPresetDefinition, id, name, instrument,
+                                   notes)
 
-  bool Parse(JsonValue* value, std::string* error_message) {
-    SkipWhitespace();
-    if (!ParseValue(value, error_message)) {
-      return false;
-    }
-
-    SkipWhitespace();
-    if (position_ != text_.size()) {
-      *error_message = "unexpected trailing characters in JSON";
-      return false;
-    }
-
-    return true;
+std::string trim_whitespace(std::string_view value) {
+  std::size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start])) != 0) {
+    ++start;
   }
 
- private:
-  bool ParseValue(JsonValue* value, std::string* error_message) {
-    SkipWhitespace();
-    if (position_ >= text_.size()) {
-      *error_message = "unexpected end of JSON";
-      return false;
-    }
-
-    const char ch = text_[position_];
-    if (ch == '{') {
-      return ParseObject(value, error_message);
-    }
-    if (ch == '[') {
-      return ParseArray(value, error_message);
-    }
-    if (ch == '"') {
-      value->type = JsonValue::Type::kString;
-      return ParseString(&value->string_value, error_message);
-    }
-
-    *error_message = "unsupported JSON value type";
-    return false;
+  std::size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
+    --end;
   }
 
-  bool ParseObject(JsonValue* value, std::string* error_message) {
-    value->type = JsonValue::Type::kObject;
-    value->object_value.clear();
-    ++position_;
-    SkipWhitespace();
-
-    if (ConsumeIf('}')) {
-      return true;
-    }
-
-    while (position_ < text_.size()) {
-      std::string key;
-      if (!ParseString(&key, error_message)) {
-        return false;
-      }
-
-      SkipWhitespace();
-      if (!ConsumeIf(':')) {
-        *error_message = "expected ':' after object key";
-        return false;
-      }
-
-      JsonValue member;
-      if (!ParseValue(&member, error_message)) {
-        return false;
-      }
-      value->object_value.emplace(std::move(key), std::move(member));
-
-      SkipWhitespace();
-      if (ConsumeIf('}')) {
-        return true;
-      }
-      if (!ConsumeIf(',')) {
-        *error_message = "expected ',' or '}' in object";
-        return false;
-      }
-      SkipWhitespace();
-    }
-
-    *error_message = "unterminated object";
-    return false;
-  }
-
-  bool ParseArray(JsonValue* value, std::string* error_message) {
-    value->type = JsonValue::Type::kArray;
-    value->array_value.clear();
-    ++position_;
-    SkipWhitespace();
-
-    if (ConsumeIf(']')) {
-      return true;
-    }
-
-    while (position_ < text_.size()) {
-      JsonValue element;
-      if (!ParseValue(&element, error_message)) {
-        return false;
-      }
-      value->array_value.push_back(std::move(element));
-
-      SkipWhitespace();
-      if (ConsumeIf(']')) {
-        return true;
-      }
-      if (!ConsumeIf(',')) {
-        *error_message = "expected ',' or ']' in array";
-        return false;
-      }
-      SkipWhitespace();
-    }
-
-    *error_message = "unterminated array";
-    return false;
-  }
-
-  bool ParseString(std::string* value, std::string* error_message) {
-    if (!ConsumeIf('"')) {
-      *error_message = "expected string";
-      return false;
-    }
-
-    std::string parsed;
-    while (position_ < text_.size()) {
-      const char ch = text_[position_++];
-      if (ch == '"') {
-        *value = std::move(parsed);
-        return true;
-      }
-
-      if (ch == '\\') {
-        if (position_ >= text_.size()) {
-          *error_message = "unterminated escape sequence";
-          return false;
-        }
-
-        const char escaped = text_[position_++];
-        switch (escaped) {
-          case '"':
-          case '\\':
-          case '/':
-            parsed.push_back(escaped);
-            break;
-          case 'b':
-            parsed.push_back('\b');
-            break;
-          case 'f':
-            parsed.push_back('\f');
-            break;
-          case 'n':
-            parsed.push_back('\n');
-            break;
-          case 'r':
-            parsed.push_back('\r');
-            break;
-          case 't':
-            parsed.push_back('\t');
-            break;
-          case 'u':
-            if (!ParseUnicodeEscape(&parsed, error_message)) {
-              return false;
-            }
-            break;
-          default:
-            *error_message = "unsupported escape sequence";
-            return false;
-        }
-        continue;
-      }
-
-      parsed.push_back(ch);
-    }
-
-    *error_message = "unterminated string";
-    return false;
-  }
-
-  bool ParseUnicodeEscape(std::string* value, std::string* error_message) {
-    if (position_ + 4 > text_.size()) {
-      *error_message = "invalid unicode escape";
-      return false;
-    }
-
-    int code_point = 0;
-    for (int i = 0; i < 4; ++i) {
-      const char ch = text_[position_++];
-      code_point *= 16;
-      if (ch >= '0' && ch <= '9') {
-        code_point += ch - '0';
-      } else if (ch >= 'a' && ch <= 'f') {
-        code_point += 10 + (ch - 'a');
-      } else if (ch >= 'A' && ch <= 'F') {
-        code_point += 10 + (ch - 'A');
-      } else {
-        *error_message = "invalid unicode escape";
-        return false;
-      }
-    }
-
-    if (code_point < 0 || code_point > 0x7F) {
-      *error_message = "only ASCII unicode escapes are supported";
-      return false;
-    }
-
-    value->push_back(static_cast<char>(code_point));
-    return true;
-  }
-
-  void SkipWhitespace() {
-    while (position_ < text_.size() &&
-           std::isspace(static_cast<unsigned char>(text_[position_])) != 0) {
-      ++position_;
-    }
-  }
-
-  bool ConsumeIf(char expected) {
-    if (position_ < text_.size() && text_[position_] == expected) {
-      ++position_;
-      return true;
-    }
-    return false;
-  }
-
-  const std::string& text_;
-  std::size_t position_ = 0;
-};
-
-const JsonValue* FindObjectMember(const JsonValue& object,
-                                  const std::string& key) {
-  if (object.type != JsonValue::Type::kObject) {
-    return nullptr;
-  }
-
-  const auto it = object.object_value.find(key);
-  if (it == object.object_value.end()) {
-    return nullptr;
-  }
-
-  return &it->second;
+  return std::string(value.substr(start, end - start));
 }
 
-bool ReadRequiredString(const JsonValue& object, const std::string& key,
-                        std::string* value, std::string* error_message) {
-  const JsonValue* member = FindObjectMember(object, key);
-  if (member == nullptr || member->type != JsonValue::Type::kString) {
-    *error_message = "missing or invalid string field: " + key;
+std::string describe_preset(std::size_t preset_index,
+                            std::string_view preset_id) {
+  if (!preset_id.empty()) {
+    return "preset '" + std::string(preset_id) + "'";
+  }
+
+  std::ostringstream description;
+  description << "preset at index " << preset_index;
+  return description.str();
+}
+
+bool NormalizePresetDefinition(const JsonPresetDefinition& preset_definition,
+                               std::size_t preset_index,
+                               JsonPresetDefinition* normalized_definition,
+                               std::string* error_message) {
+  normalized_definition->id = trim_whitespace(preset_definition.id);
+  normalized_definition->name = trim_whitespace(preset_definition.name);
+  normalized_definition->instrument =
+      trim_whitespace(preset_definition.instrument);
+
+  if (normalized_definition->id.empty()) {
+    *error_message =
+        describe_preset(preset_index, std::string_view{}) + " has an empty id";
     return false;
   }
 
-  *value = member->string_value;
+  const std::string preset_label =
+      describe_preset(preset_index, normalized_definition->id);
+  if (normalized_definition->name.empty()) {
+    *error_message = preset_label + " has an empty name";
+    return false;
+  }
+
+  if (normalized_definition->instrument.empty()) {
+    *error_message = preset_label + " has an empty instrument";
+    return false;
+  }
+
+  if (preset_definition.notes.empty()) {
+    *error_message = preset_label + " has no notes";
+    return false;
+  }
+
+  normalized_definition->notes.clear();
+  normalized_definition->notes.reserve(preset_definition.notes.size());
+  for (std::size_t note_index = 0; note_index < preset_definition.notes.size();
+       ++note_index) {
+    const std::string trimmed_note =
+        trim_whitespace(preset_definition.notes[note_index]);
+    if (trimmed_note.empty()) {
+      *error_message = preset_label + " has an empty note at index " +
+                       std::to_string(note_index);
+      return false;
+    }
+
+    normalized_definition->notes.push_back(trimmed_note);
+  }
+
   return true;
 }
 
-bool BuildPreset(const JsonValue& preset_value, TuningPreset* preset,
+bool BuildPreset(const JsonPresetDefinition& preset_definition,
+                 std::size_t preset_index, TuningPreset* preset,
                  std::string* error_message) {
-  if (preset_value.type != JsonValue::Type::kObject) {
-    *error_message = "preset entry must be an object";
+  JsonPresetDefinition normalized_definition;
+  if (!NormalizePresetDefinition(preset_definition, preset_index,
+                                 &normalized_definition, error_message)) {
     return false;
   }
 
-  if (!ReadRequiredString(preset_value, "id", &preset->id, error_message) ||
-      !ReadRequiredString(preset_value, "name", &preset->name, error_message) ||
-      !ReadRequiredString(preset_value, "instrument", &preset->instrument,
-                          error_message)) {
-    return false;
-  }
-
-  const JsonValue* notes_value = FindObjectMember(preset_value, "notes");
-  if (notes_value == nullptr || notes_value->type != JsonValue::Type::kArray ||
-      notes_value->array_value.empty()) {
-    *error_message = "missing or invalid notes array";
-    return false;
-  }
-
+  preset->id = normalized_definition.id;
+  preset->name = normalized_definition.name;
+  preset->instrument = normalized_definition.instrument;
   preset->strings.clear();
-  preset->strings.reserve(notes_value->array_value.size());
-  for (const JsonValue& note_value : notes_value->array_value) {
-    if (note_value.type != JsonValue::Type::kString) {
-      *error_message = "notes must be strings";
-      return false;
-    }
-
-    const int midi_note = dsp_core::note_name_to_midi(note_value.string_value);
+  preset->strings.reserve(normalized_definition.notes.size());
+  for (const std::string& note_name : normalized_definition.notes) {
+    const int midi_note = dsp_core::note_name_to_midi(note_name);
     if (midi_note < 0) {
       *error_message = "invalid note name in preset '" + preset->id + "': " +
-                       note_value.string_value;
+                       note_name;
       return false;
     }
 
     TuningString string_target;
-    string_target.note = note_value.string_value;
+    string_target.note = note_name;
     string_target.midi_note = midi_note;
     string_target.frequency_hz = dsp_core::midi_to_frequency_hz(midi_note);
     preset->strings.push_back(std::move(string_target));
@@ -329,40 +139,50 @@ bool BuildPreset(const JsonValue& preset_value, TuningPreset* preset,
 PresetLoadResult BuildPresetLoadResult(const JsonValue& root) {
   PresetLoadResult result;
 
-  std::vector<JsonValue> preset_values;
-  if (root.type == JsonValue::Type::kObject) {
-    const JsonValue* presets_member = FindObjectMember(root, "presets");
-    if (presets_member != nullptr) {
-      if (presets_member->type != JsonValue::Type::kArray) {
-        result.error_message = "presets field must be an array";
-        return result;
+  std::vector<JsonPresetDefinition> preset_definitions;
+  try {
+    if (root.is_object()) {
+      const auto presets_it = root.find("presets");
+      if (presets_it == root.end()) {
+        preset_definitions.push_back(root.get<JsonPresetDefinition>());
+      } else {
+        preset_definitions =
+            presets_it->get<std::vector<JsonPresetDefinition>>();
       }
-      preset_values = presets_member->array_value;
+    } else if (root.is_array()) {
+      preset_definitions = root.get<std::vector<JsonPresetDefinition>>();
     } else {
-      preset_values.push_back(root);
+      result.error_message = "root JSON value must be an object or array";
+      return result;
     }
-  } else if (root.type == JsonValue::Type::kArray) {
-    preset_values = root.array_value;
-  } else {
-    result.error_message = "root JSON value must be an object or array";
+  } catch (const JsonValue::exception& error) {
+    result.error_message = "invalid preset schema: " + std::string(error.what());
     return result;
   }
 
-  std::map<std::string, bool> seen_ids;
-  result.presets.reserve(preset_values.size());
-  for (const JsonValue& preset_value : preset_values) {
+  std::unordered_set<std::string> seen_ids;
+  if (preset_definitions.empty()) {
+    result.error_message = "preset bundle is empty";
+    return result;
+  }
+
+  result.presets.reserve(preset_definitions.size());
+  for (std::size_t preset_index = 0; preset_index < preset_definitions.size();
+       ++preset_index) {
+    const JsonPresetDefinition& preset_definition =
+        preset_definitions[preset_index];
     TuningPreset preset;
-    if (!BuildPreset(preset_value, &preset, &result.error_message)) {
+    if (!BuildPreset(preset_definition, preset_index, &preset,
+                     &result.error_message)) {
       return result;
     }
 
-    if (seen_ids.find(preset.id) != seen_ids.end()) {
+    if (!seen_ids.insert(preset.id).second) {
       result.error_message = "duplicate preset id: " + preset.id;
       result.presets.clear();
       return result;
     }
 
-    seen_ids.emplace(preset.id, true);
     result.presets.push_back(std::move(preset));
   }
 
@@ -372,14 +192,13 @@ PresetLoadResult BuildPresetLoadResult(const JsonValue& root) {
 }  // namespace
 
 PresetLoadResult load_presets_from_json(const std::string& json_text) {
-  PresetLoadResult result;
-  JsonValue root;
-  JsonParser parser(json_text);
-  if (!parser.Parse(&root, &result.error_message)) {
+  try {
+    return BuildPresetLoadResult(JsonValue::parse(json_text));
+  } catch (const JsonValue::parse_error& error) {
+    PresetLoadResult result;
+    result.error_message = "invalid JSON: " + std::string(error.what());
     return result;
   }
-
-  return BuildPresetLoadResult(root);
 }
 
 PresetLoadResult load_presets_from_file(const std::string& file_path) {
@@ -390,15 +209,20 @@ PresetLoadResult load_presets_from_file(const std::string& file_path) {
     result.error_message = "failed to open preset file: " + file_path;
     return result;
   }
+  input.exceptions(std::ifstream::badbit);
 
-  std::ostringstream buffer;
-  buffer << input.rdbuf();
-  if (!input.good() && !input.eof()) {
+  try {
+    return BuildPresetLoadResult(JsonValue::parse(input));
+  } catch (const JsonValue::parse_error& error) {
+    result.error_message = "invalid JSON: " + std::string(error.what());
+  } catch (const JsonValue::exception& error) {
+    result.error_message = "invalid preset schema: " + std::string(error.what());
+  } catch (const std::ios_base::failure&) {
     result.error_message = "failed to read preset file: " + file_path;
     return result;
   }
 
-  return load_presets_from_json(buffer.str());
+  return result;
 }
 
 const TuningPreset* find_preset_by_id(const std::vector<TuningPreset>& presets,

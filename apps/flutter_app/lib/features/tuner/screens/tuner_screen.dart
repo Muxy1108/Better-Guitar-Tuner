@@ -153,37 +153,6 @@ class TunerScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _SectionCard(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    l10n.listeningLabel,
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _listeningSummary(l10n, viewModel),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            FilledButton.tonal(
-                              onPressed: () => viewModel.toggleListening(),
-                              child: Text(
-                                viewModel.isListening
-                                    ? l10n.stopListeningLabel
-                                    : l10n.startListeningLabel,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                       _SettingsCard(viewModel: viewModel),
                       const SizedBox(height: 12),
                       _ResultSummaryCard(
@@ -209,16 +178,44 @@ class TunerScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    l10n.centsMeterLabel,
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                FilledButton.tonal(
+                                  onPressed: () => viewModel.toggleListening(),
+                                  child: Text(
+                                    viewModel.isListening
+                                        ? l10n.stopListeningLabel
+                                        : l10n.startListeningLabel,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
                             Text(
-                              l10n.centsMeterLabel,
-                              style: Theme.of(context).textTheme.titleMedium,
+                              _listeningSummary(l10n, viewModel),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
                             ),
                             const SizedBox(height: 20),
                             CentsMeter(
-                              centsOffset: result.hasUsablePitch
+                              centsOffset: result.hasDisplayablePitch
                                   ? result.centsOffset
                                   : 0,
-                              hasPitch: result.hasUsablePitch,
+                              hasPitch: result.hasDisplayablePitch,
                               displayLabel: _meterDisplayLabel(l10n, result),
                             ),
                           ],
@@ -460,17 +457,17 @@ class _DiagnosticsCard extends StatelessWidget {
               ),
               _MetricTile(
                 label: l10n.pitchStateLabel,
-                value: _signalTitle(l10n, result.signalState),
+                value: _signalTitle(l10n, viewModel.rawSignalState),
               ),
               _MetricTile(
                 label: l10n.rawCentsLabel,
-                value: result.hasTarget
+                value: viewModel.latestRawResult.hasDisplayablePitch
                     ? _formatSignedCents(viewModel.rawCentsOffset)
                     : '--',
               ),
               _MetricTile(
                 label: l10n.smoothedCentsLabel,
-                value: result.hasTarget
+                value: result.hasDisplayablePitch
                     ? _formatSignedCents(viewModel.smoothedCentsOffset)
                     : '--',
               ),
@@ -485,6 +482,24 @@ class _DiagnosticsCard extends StatelessWidget {
             Text(
               '${l10n.bridgeLastErrorLabel}: ${diagnostics.lastError}',
               style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          if (viewModel.latestRawResult.analysisReason != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'DSP reason: ${viewModel.latestRawResult.analysisReason}',
+            ),
+          ],
+          if (viewModel.latestRawResult.runnerRejectionReason != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Runner gate: ${viewModel.latestRawResult.runnerRejectionReason}',
+            ),
+          ],
+          if (viewModel.lastUiSuppressionReason != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'UI hold: ${viewModel.lastUiSuppressionReason}',
             ),
           ],
           if (diagnostics.stderrTail.isNotEmpty) ...[
@@ -515,11 +530,12 @@ class _ResultSummaryCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final targetNote =
         result.hasTarget ? (result.targetNote ?? l10n.unavailableValue) : '--';
-    final frequencyValue = result.hasUsablePitch
+    final frequencyValue = result.hasDisplayablePitch
         ? l10n.frequencyValue(result.pitchFrame.frequencyHz.toStringAsFixed(2))
         : _signalTitle(l10n, result.signalState);
-    final centsValue =
-        result.hasUsablePitch ? _formatSignedCents(smoothedCentsOffset) : '--';
+    final centsValue = result.hasDisplayablePitch
+        ? _formatSignedCents(smoothedCentsOffset)
+        : '--';
 
     return _SectionCard(
       child: Column(
@@ -558,7 +574,7 @@ class _ResultSummaryCard extends StatelessWidget {
               ),
               _MetricTile(
                 label: l10n.rawCentsLabel,
-                value: result.hasUsablePitch
+                value: result.hasDisplayablePitch
                     ? _formatSignedCents(rawCentsOffset)
                     : '--',
               ),
@@ -672,7 +688,7 @@ String _bridgeKindLabel(AppLocalizations l10n, AudioBridgeKind kind) {
 }
 
 String _meterDisplayLabel(AppLocalizations l10n, TuningResultModel result) {
-  if (!result.hasUsablePitch) {
+  if (!result.hasDisplayablePitch) {
     return l10n.noPitchLabel;
   }
   return l10n.centsValue(_formatSignedNumber(result.centsOffset));

@@ -35,8 +35,10 @@ enum class TuningStatus {
 struct TuningThresholds {
   float in_tune_cents = 5.0f;
   float a4_reference_hz = 440.0f;
-  float auto_target_retain_cents = 28.0f;
-  float auto_target_switch_delta_cents = 7.0f;
+  // Real guitar plucks wander during attack/decay, so auto mode should retain
+  // the current string unless the replacement is clearly better.
+  float auto_target_retain_cents = 30.0f;
+  float auto_target_switch_delta_cents = 8.0f;
 };
 
 inline constexpr TuningThresholds kDefaultTuningThresholds{};
