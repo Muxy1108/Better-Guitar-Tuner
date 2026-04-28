@@ -24,6 +24,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get manualModeLabel => '手动';
 
   @override
+  String get manualStringLabel => '手动弦';
+
+  @override
   String get listeningLabel => '监听';
 
   @override
@@ -166,6 +169,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunerReadingLabel => '当前读数';
 
   @override
+  String get currentNoteLabel => '当前音';
+
+  @override
   String get targetNoteLabel => '目标音';
 
   @override
@@ -179,6 +185,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get centsMeterLabel => '音分表';
+
+  @override
+  String get signalLevelLabel => '信号强度';
+
+  @override
+  String get tuningNotesLabel => '调音音符';
+
+  @override
+  String get tuningTipsLabel => '调音提示';
 
   @override
   String get noPitchLabel => '无音高';

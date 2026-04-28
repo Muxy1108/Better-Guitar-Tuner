@@ -128,6 +128,12 @@ abstract class AppLocalizations {
   /// **'Manual'**
   String get manualModeLabel;
 
+  /// No description provided for @manualStringLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual string'**
+  String get manualStringLabel;
+
   /// No description provided for @listeningLabel.
   ///
   /// In en, this message translates to:
@@ -410,6 +416,12 @@ abstract class AppLocalizations {
   /// **'Current reading'**
   String get tunerReadingLabel;
 
+  /// No description provided for @currentNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current note'**
+  String get currentNoteLabel;
+
   /// No description provided for @targetNoteLabel.
   ///
   /// In en, this message translates to:
@@ -439,6 +451,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cents meter'**
   String get centsMeterLabel;
+
+  /// No description provided for @signalLevelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Signal level'**
+  String get signalLevelLabel;
+
+  /// No description provided for @tuningNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuning notes'**
+  String get tuningNotesLabel;
+
+  /// No description provided for @tuningTipsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuning tips'**
+  String get tuningTipsLabel;
 
   /// No description provided for @noPitchLabel.
   ///

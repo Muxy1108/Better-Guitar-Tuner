@@ -15,13 +15,45 @@ class BetterGuitarTunerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF2E8B57),
+    );
+
     return MaterialApp(
       title: 'Better Guitar Tuner',
       debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        scaffoldBackgroundColor: const Color(0xFFF4F7F8),
+        colorScheme: colorScheme,
+        scaffoldBackgroundColor: const Color(0xFFF6F8F6),
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color(0xFFF6F8F6),
+          foregroundColor: colorScheme.onSurface,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 2,
+          margin: EdgeInsets.zero,
+          shadowColor: Colors.black.withValues(alpha: 0.08),
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Color(0xFFE1E8E3)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        sliderTheme: SliderThemeData(
+          activeTrackColor: colorScheme.primary,
+          thumbColor: colorScheme.primary,
+        ),
         useMaterial3: true,
       ),
       supportedLocales: AppLocalizations.supportedLocales,

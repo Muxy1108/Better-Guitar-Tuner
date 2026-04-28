@@ -24,6 +24,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manualModeLabel => 'Manual';
 
   @override
+  String get manualStringLabel => 'Manual string';
+
+  @override
   String get listeningLabel => 'Listening';
 
   @override
@@ -174,6 +177,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tunerReadingLabel => 'Current reading';
 
   @override
+  String get currentNoteLabel => 'Current note';
+
+  @override
   String get targetNoteLabel => 'Target note';
 
   @override
@@ -187,6 +193,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get centsMeterLabel => 'Cents meter';
+
+  @override
+  String get signalLevelLabel => 'Signal level';
+
+  @override
+  String get tuningNotesLabel => 'Tuning notes';
+
+  @override
+  String get tuningTipsLabel => 'Tuning tips';
 
   @override
   String get noPitchLabel => 'No pitch';

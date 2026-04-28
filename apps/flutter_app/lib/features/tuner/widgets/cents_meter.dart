@@ -7,12 +7,14 @@ class CentsMeter extends StatelessWidget {
     required this.centsOffset,
     required this.hasPitch,
     required this.displayLabel,
+    this.height = 190,
     super.key,
   });
 
   final double centsOffset;
   final bool hasPitch;
   final String displayLabel;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +26,7 @@ class CentsMeter extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (context, animatedOffset, child) {
         return SizedBox(
-          height: 170,
+          height: height,
           width: double.infinity,
           child: Column(
             children: [
@@ -69,11 +71,14 @@ class _CentsMeterPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height - 10);
-    final radius = math.min(size.width / 2 - 12, size.height - 24);
+    final radius = math.max(
+      0.0,
+      math.min(size.width / 2 - 14, size.height - 26),
+    );
 
     final arcPaint = Paint()
-      ..color = colorScheme.outlineVariant
-      ..strokeWidth = 10
+      ..color = colorScheme.outlineVariant.withValues(alpha: 0.70)
+      ..strokeWidth = 12
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(
@@ -85,7 +90,7 @@ class _CentsMeterPainter extends CustomPainter {
     );
 
     final guidePaint = Paint()
-      ..color = colorScheme.outline
+      ..color = colorScheme.outline.withValues(alpha: 0.70)
       ..strokeWidth = 2;
     for (final mark in const [-50, -25, 0, 25, 50]) {
       final angle = math.pi + ((mark + 50) / 100) * math.pi;
@@ -102,7 +107,7 @@ class _CentsMeterPainter extends CustomPainter {
 
     final activePaint = Paint()
       ..color = hasPitch ? _needleColor() : colorScheme.outlineVariant
-      ..strokeWidth = 4
+      ..strokeWidth = 5
       ..strokeCap = StrokeCap.round;
     final angle = math.pi + ((centsOffset + 50) / 100) * math.pi;
     final needleEnd = Offset(
@@ -110,6 +115,11 @@ class _CentsMeterPainter extends CustomPainter {
       center.dy + math.sin(angle) * (radius - 26),
     );
     canvas.drawLine(center, needleEnd, activePaint);
+    canvas.drawCircle(
+      center,
+      10,
+      Paint()..color = activePaint.color.withValues(alpha: 0.14),
+    );
     canvas.drawCircle(center, 7, Paint()..color = activePaint.color);
   }
 
